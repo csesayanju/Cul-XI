@@ -170,3 +170,78 @@ describe("row-level security", () => {
     ).rejects.toThrow(/Invalid invite code/);
   });
 });
+
+describe("save_fantasy_team", () => {
+  // Carla's current XI for match 2, as API ids (see supabase/seed.sql).
+  const CARLA_XI = [
+    900001, 900003, 900004, 920003, 900008, 900009, 900010, 920008, 920009, 900013, 920013,
+  ];
+
+  async function ids(apiIds: number[]) {
+    const res = await db.query<{ id: number }>(
+      `select id from public.players where api_player_id = any($1) order by array_position($1, api_player_id)`,
+      [apiIds],
+    );
+    return res.rows.map((r) => Number(r.id));
+  }
+
+  const matchId = async (fixture: number) =>
+    Number(
+      (
+        await db.query<{ id: number }>(`select id from public.matches where api_fixture_id = $1`, [
+          fixture,
+        ])
+      ).rows[0]!.id,
+    );
+
+  const save = (userId: string, match: number, players: number[], c: number, v: number) =>
+    asUser(db, userId, async (tx) => {
+      const res = await tx.query<{ team: string }>(
+        `select public.save_fantasy_team($1, $2::bigint[], $3, $4) as team`,
+        [match, players, c, v],
+      );
+      const picks = await tx.query<{ n: number; c: number }>(
+        `select count(*)::int as n, count(*) filter (where is_captain)::int as c
+         from public.fantasy_team_players where fantasy_team_id = $1`,
+        [res.rows[0]!.team],
+      );
+      return { team: res.rows[0]!.team, ...picks.rows[0]! };
+    });
+
+  it("replaces an existing team's picks atomically", async () => {
+    const players = await ids(CARLA_XI);
+    const result = await save(CARLA, await matchId(990002), players, players[1]!, players[2]!);
+    expect(result).toMatchObject({ team: CARLA_TEAM, n: 11, c: 1 });
+  });
+
+  it("creates a new team for an upcoming match", async () => {
+    const players = await ids(CARLA_XI);
+    const result = await save(BRUNO, await matchId(990002), players, players[0]!, players[1]!);
+    expect(result.team).not.toBe(CARLA_TEAM);
+    expect(result.n).toBe(11);
+  });
+
+  it("rejects a match that has kicked off", async () => {
+    const players = await ids(CARLA_XI);
+    await expect(
+      save(CARLA, await matchId(990001), players, players[0]!, players[1]!),
+    ).rejects.toThrow();
+  });
+
+  it("rejects players not available for the match", async () => {
+    // 910001 plays for the match-1 opponent, not match 2.
+    const players = await ids([...CARLA_XI.slice(0, 10), 910001]);
+    await expect(
+      save(CARLA, await matchId(990002), players, players[0]!, players[1]!),
+    ).rejects.toThrow(/not available/);
+  });
+
+  it("rejects the wrong number of players or a bad armband", async () => {
+    const players = await ids(CARLA_XI);
+    const m = await matchId(990002);
+    await expect(save(CARLA, m, players.slice(0, 10), players[0]!, players[1]!)).rejects.toThrow(
+      /exactly 11/,
+    );
+    await expect(save(CARLA, m, players, players[0]!, players[0]!)).rejects.toThrow(/Captain/);
+  });
+});

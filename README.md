@@ -177,8 +177,8 @@ after a rate-limit or quota error. There's no live polling.
 | -------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `/api/sync/fixtures` | daily                            | 2 requests (Barça home + away matches, all competitions; cached 12h)                           |
 | `/api/sync/squads`   | daily, for matches ≤10 days away | Up to 3 per team: its last five games (cached 1 day) + line-ups of its last 2 (cached forever) |
-| `/api/sync/lineups`  | from 40 min before kickoff       | 1 per match. Empty responses aren't cached, so retrying before line-ups are out is safe.       |
-| `/api/sync/stats`    | after full time                  | 2 per match (match details with events + player box score), cached forever                     |
+| `/api/sync/lineups`  | every 15 min near kickoff        | 1 per match. Empty responses aren't cached, so retrying before line-ups are out is safe.       |
+| `/api/sync/stats`    | every 15 min after full time     | 2 per match (match details with events + player box score), cached forever                     |
 
 That comes to roughly **8 requests per match**, well inside the free 100/day.
 
@@ -199,13 +199,15 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://your-app.vercel.app/api/syn
 2. Add every variable from `.env.example` under **Settings → Environment Variables**, and set
    `APP_URL` to your Vercel URL.
 3. Add `https://<your-app>.vercel.app/auth/callback` to Supabase's Redirect URLs.
-4. [`vercel.json`](vercel.json) schedules daily crons for stats (05:00 UTC), fixtures (06:00)
-   and squads (06:30). Vercel sends `CRON_SECRET` automatically.
+4. **Scheduled syncs run on GitHub Actions** ([`.github/workflows/sync.yml`](.github/workflows/sync.yml)),
+   not Vercel crons (Vercel's free plan only allows daily ones). In the GitHub repo, open
+   **Settings → Secrets and variables → Actions** and add:
+   - a **variable** `APP_URL` with your Vercel URL, e.g. `https://cule-xi.vercel.app`
+   - a **secret** `CRON_SECRET` with the same value as in Vercel
 
-> **Line-ups:** Vercel's Hobby plan only allows daily crons, so line-ups aren't scheduled.
-> You can click **Sync line-ups** on `/admin` before kickoff, or point an external scheduler
-> (for example cron-job.org) at `/api/sync/lineups` with the bearer header. Line-ups only add
-> "Starting" and "Bench" tags, and scoring works without them.
+   The workflow runs line-ups and stats every 15 minutes, and fixtures and squads daily at 05:30
+   UTC. Each job only calls Highlightly when something is due, so most runs use no requests. You
+   can also run it by hand from the **Actions** tab (**Sync match data → Run workflow**).
 
 ## Project structure
 

@@ -118,6 +118,8 @@ create table public.fantasy_team_players (
   player_id       bigint not null references public.players (id) on delete restrict,
   is_captain      boolean not null default false,
   is_vice_captain boolean not null default false,
+  -- Price when picked, so later admin price edits don't change the team's budget check.
+  price           numeric(4, 1) not null check (price > 0),
   primary key (fantasy_team_id, player_id),
   check (not (is_captain and is_vice_captain))
 );

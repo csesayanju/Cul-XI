@@ -159,8 +159,8 @@ from (values
 ) as t(id, user_id, api_fixture_id, locked)
 join public.matches m on m.api_fixture_id = t.api_fixture_id;
 
-insert into public.fantasy_team_players (fantasy_team_id, player_id, is_captain, is_vice_captain)
-select t.team_id::uuid, p.id, t.is_captain, t.is_vice
+insert into public.fantasy_team_players (fantasy_team_id, player_id, is_captain, is_vice_captain, price)
+select t.team_id::uuid, p.id, t.is_captain, t.is_vice, p.price
 from (values
   -- Admin Ana, match 1: 1-4-4-2, Barça x7
   ('f0000000-0000-0000-0000-000000000001', 900001, false, false),

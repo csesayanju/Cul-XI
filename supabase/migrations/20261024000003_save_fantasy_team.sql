@@ -48,9 +48,11 @@ begin
 
   delete from public.fantasy_team_players where fantasy_team_id = v_team_id;
 
-  insert into public.fantasy_team_players (fantasy_team_id, player_id, is_captain, is_vice_captain)
-  select v_team_id, pid, pid = p_captain_id, pid = p_vice_captain_id
-  from unnest(p_player_ids) as pid;
+  insert into public.fantasy_team_players
+    (fantasy_team_id, player_id, is_captain, is_vice_captain, price)
+  select v_team_id, p.id, p.id = p_captain_id, p.id = p_vice_captain_id, p.price
+  from public.players p
+  where p.id = any (p_player_ids);
 
   return v_team_id;
 end;

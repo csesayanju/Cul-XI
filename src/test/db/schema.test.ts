@@ -45,6 +45,25 @@ describe("migrations + seed", () => {
     expect(res.rows.find((r) => r.display_name === "Admin Ana")?.is_admin).toBe(true);
   });
 
+  it("names Google users by full name and guests generically", async () => {
+    const names = await db
+      .transaction(async (tx) => {
+        await tx.exec(`
+          insert into auth.users (id, email, raw_user_meta_data) values
+            ('55555555-5555-5555-5555-555555555555', 'gpl@example.com', '{"full_name":"Gala Puyol"}'),
+            ('66666666-6666-6666-6666-666666666666', null, '{}');
+        `);
+        const res = await tx.query<{ display_name: string }>(
+          `select display_name from public.profiles
+           where id in ('55555555-5555-5555-5555-555555555555', '66666666-6666-6666-6666-666666666666')
+           order by id`,
+        );
+        throw res.rows.map((r) => r.display_name); // roll back, return the names
+      })
+      .catch((rows: unknown) => rows);
+    expect(names).toEqual(["Gala Puyol", "Guest culé"]);
+  });
+
   it("seeds 11 players per fantasy team", async () => {
     const res = await db.query<{ n: number }>(
       "select count(*)::int as n from public.fantasy_team_players group by fantasy_team_id",

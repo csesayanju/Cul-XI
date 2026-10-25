@@ -147,6 +147,13 @@ describe("line-ups", () => {
     expect(pool.every((p) => p.team_api_id === OPP)).toBe(true);
     expect(pool.find((p) => p.api_player_id === 2210000013)?.position).toBe("FWD");
   });
+
+  it("produces rows with exactly the players table columns (no line-up fields)", () => {
+    const [row] = playerPoolFromLineups([lineups], OPP);
+    expect(Object.keys(row!).sort()).toEqual(
+      ["api_player_id", "name", "position", "shirt_number", "team_api_id", "team_name"].sort(),
+    );
+  });
 });
 
 describe("recentFinished", () => {

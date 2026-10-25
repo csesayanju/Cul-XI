@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { PlayerRow } from "@/lib/highlightly/mappers";
+import { toPlayerRow, type PlayerRow } from "@/lib/highlightly/mappers";
 
 import { defaultPrice } from "../pricing";
 import { check, type SyncContext } from "./context";
@@ -32,8 +32,9 @@ export async function upsertPlayers(
     await db
       .from("players")
       .upsert(
+        // Only `players` columns: callers may pass richer objects (e.g. line-up entries).
         unique.map((r) => ({
-          ...r,
+          ...toPlayerRow(r),
           price:
             prices.get(r.api_player_id) ??
             defaultPrice(r.position, r.team_api_id === config.barcaTeamId),

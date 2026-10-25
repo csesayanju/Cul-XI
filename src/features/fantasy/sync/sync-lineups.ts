@@ -1,6 +1,6 @@
 import "server-only";
 
-import { hasLineups, mapLineups } from "@/lib/highlightly/mappers";
+import { hasLineups, mapLineups, toPlayerRow } from "@/lib/highlightly/mappers";
 
 import {
   check,
@@ -43,10 +43,7 @@ export async function syncLineups(
 
     const entries = mapLineups(data);
     // Make sure late call-ups exist as players (position falls back to MID if unknown).
-    const ids = await upsertPlayers(
-      ctx,
-      entries.map((e) => ({ ...e, position: e.position ?? "MID" })),
-    );
+    const ids = await upsertPlayers(ctx, entries.map(toPlayerRow));
 
     // Everyone not named in the matchday squad is marked not_in_squad, then listed players updated.
     check(

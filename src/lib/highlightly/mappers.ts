@@ -178,6 +178,16 @@ export function mapLineups(lineups: HlLineups): LineupEntry[] {
   });
 }
 
+/** Strips line-up-only fields so the row matches the `players` table. */
+export const toPlayerRow = (e: LineupEntry | PlayerRow): PlayerRow => ({
+  api_player_id: e.api_player_id,
+  name: e.name,
+  team_api_id: e.team_api_id,
+  team_name: e.team_name,
+  position: e.position ?? "MID",
+  shirt_number: e.shirt_number,
+});
+
 /**
  * Highlightly has no squad endpoint, so a team's player pool is built from the line-ups
  * (starters + full bench) of its recent matches. Most recent appearance wins.
@@ -190,7 +200,7 @@ export function playerPoolFromLineups(
   for (const lineups of lineupsNewestFirst) {
     for (const e of mapLineups(lineups)) {
       if (e.team_api_id !== teamId || pool.has(e.api_player_id)) continue;
-      pool.set(e.api_player_id, { ...e, position: e.position ?? "MID" });
+      pool.set(e.api_player_id, toPlayerRow(e));
     }
   }
   return [...pool.values()];

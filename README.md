@@ -74,6 +74,21 @@ pnpm install
    - add `http://localhost:3000/auth/callback` to **Redirect URLs**, plus your Vercel URL with
      `/auth/callback` later
 
+#### Optional: Google sign-in and guest play
+
+The sign-in page shows these buttons automatically once they're switched on in Supabase.
+
+- **Play as a guest:** in **Authentication → Sign In / Providers**, turn on **Allow anonymous
+  sign-ins**. Guests need no email but still need the invite code. Their account lives in one
+  browser only.
+- **Google:**
+  1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), create an
+     **OAuth client ID** of type **Web application**.
+  2. Add `https://<your-project-ref>.supabase.co/auth/v1/callback` as an **Authorized redirect
+     URI**.
+  3. In Supabase, open **Authentication → Sign In / Providers → Google**, turn it on and paste
+     the client ID and secret.
+
 ### 3. Get a Highlightly key
 
 Sign up at [highlightly.net](https://highlightly.net/login), choose the free **Basic** plan for

@@ -30,6 +30,30 @@ export async function signInWithMagicLink(
   return { ok: true, message: "Check your inbox — we sent you a sign-in link." };
 }
 
+/** Starts Google sign-in. Supabase redirects back to /auth/callback with a code. */
+export async function signInWithGoogle(): Promise<FormState> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: `${serverEnv().APP_URL}/auth/callback` },
+  });
+  if (error || !data.url) {
+    return { ok: false, message: `Google sign-in is unavailable: ${error?.message ?? "no URL"}` };
+  }
+  redirect(data.url);
+}
+
+/**
+ * Plays as a guest: creates an anonymous Supabase user (no email). The invite code on /join
+ * is still required, so guests can't get into the league without it.
+ */
+export async function signInAsGuest(): Promise<FormState> {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInAnonymously();
+  if (error) return { ok: false, message: `Guest sign-in is unavailable: ${error.message}` };
+  redirect("/join");
+}
+
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();

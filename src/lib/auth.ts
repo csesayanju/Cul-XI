@@ -16,6 +16,8 @@ export interface Profile {
 export interface SessionUser {
   id: string;
   email: string | null;
+  /** Guest account created with "Play as a guest" (no email; tied to this browser). */
+  isAnonymous: boolean;
   profile: Profile | null;
 }
 
@@ -33,7 +35,12 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     .eq("id", user.id)
     .maybeSingle();
 
-  return { id: user.id, email: user.email ?? null, profile: (profile as Profile | null) ?? null };
+  return {
+    id: user.id,
+    email: user.email ?? null,
+    isAnonymous: user.is_anonymous === true,
+    profile: (profile as Profile | null) ?? null,
+  };
 }
 
 export async function requireUser(): Promise<SessionUser> {

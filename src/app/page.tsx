@@ -4,10 +4,12 @@ import { LoginForm } from "@/components/login-form";
 import { Card, Notice } from "@/components/ui";
 import { Wordmark } from "@/components/wordmark";
 import { getSessionUser } from "@/lib/auth";
+import { getAuthMethods } from "@/lib/supabase/auth-methods";
 
 const ERRORS: Record<string, string> = {
   "missing-code": "That sign-in link was incomplete. Request a new one.",
   "link-expired": "That sign-in link has expired or was already used. Request a new one.",
+  oauth: "Sign-in was cancelled or failed. Please try again.",
 };
 
 export default async function HomePage({
@@ -15,12 +17,22 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ error?: string; signin?: string }>;
 }) {
-  const [user, params] = await Promise.all([getSessionUser(), searchParams]);
+  const [user, params, methods] = await Promise.all([
+    getSessionUser(),
+    searchParams,
+    getAuthMethods(),
+  ]);
 
   if (user) {
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-black">Hola, {user.profile?.display_name ?? "culé"} 👋</h1>
+        {user.isAnonymous && (
+          <Notice>
+            You&apos;re playing as a guest. This account only exists in this browser, so don&apos;t
+            clear its data or you&apos;ll lose your teams.
+          </Notice>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <Link href="/matches">
             <Card className="h-full transition hover:border-accent">
@@ -64,9 +76,9 @@ export default async function HomePage({
             <Notice>Please sign in to continue.</Notice>
           </div>
         )}
-        <LoginForm />
+        <LoginForm methods={methods} />
         <p className="mt-3 text-xs text-ink-muted">
-          No password needed. Invite-only — you&apos;ll need the group&apos;s invite code after
+          No password needed. Invite-only — everyone needs the group&apos;s invite code after
           signing in.
         </p>
       </Card>

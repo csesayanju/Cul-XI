@@ -7,12 +7,15 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 /**
- * Magic-link landing: exchanges the code for a session, grants admin to ADMIN_EMAILS,
+ * Magic-link and Google sign-in landing: exchanges the code for a session, grants admin to ADMIN_EMAILS,
  * then sends new users to /join and members to /matches.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
+  // OAuth providers send ?error=... when the user cancels or something fails.
+  if (url.searchParams.get("error"))
+    return NextResponse.redirect(new URL("/?error=oauth", url.origin));
   if (!code) return NextResponse.redirect(new URL("/?error=missing-code", url.origin));
 
   const supabase = await createClient();

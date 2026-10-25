@@ -19,8 +19,8 @@ Thanks for helping out! This is a small private project, so the process is light
 
 - **Never commit secrets.** Only `.env.example` (placeholders) is tracked. Real keys live in
   `.env.local` (git-ignored) or in Vercel/Supabase settings.
-- **Respect the API budget.** All API-Football calls go through
-  `src/lib/api-football/client.ts`, which caches responses in the database. Don't add polling or
+- **Respect the API budget.** All Highlightly calls go through
+  `src/lib/highlightly/client.ts`, which caches responses in the database. Don't add polling or
   call the API from the browser. Tests must use the mock JSON in `__fixtures__/`, never the real API.
 - **Schema changes = new migration.** Add a new file in `supabase/migrations/` and keep RLS on
   every table. Extend `src/test/db/schema.test.ts` when you change policies.

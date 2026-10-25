@@ -49,8 +49,8 @@ bypassed the UI), it scores 0 and the reason is shown.
 
 - **Framework:** Next.js 16 (App Router) with strict TypeScript and Tailwind CSS v4
 - **Backend:** Supabase for magic-link auth, Postgres and row-level security
-- **Data:** [API-Football](https://www.api-football.com/), via the direct API rather than
-  RapidAPI. It's called only from server code.
+- **Data:** the [Highlightly Football API](https://highlightly.net/football-api/) free plan,
+  via the direct API rather than RapidAPI. It's called only from server code.
 - **Tooling:** Vitest, ESLint and Prettier, managed with pnpm
 - **Hosting:** ready to deploy on Vercel
 
@@ -74,10 +74,14 @@ pnpm install
    - add `http://localhost:3000/auth/callback` to **Redirect URLs**, plus your Vercel URL with
      `/auth/callback` later
 
-### 3. Get an API-Football key
+### 3. Get a Highlightly key
 
-Sign up at [dashboard.api-football.com](https://dashboard.api-football.com/) and copy your API
-key. Use the direct API, not RapidAPI.
+Sign up at [highlightly.net](https://highlightly.net/login), choose the free **Basic** plan for
+the Football API and copy your API key. Use Highlightly's own site, not RapidAPI: the two have
+separate accounts and keys.
+
+> Why not API-Football? Its free plan only covers the 2022–2024 seasons. Highlightly's free
+> plan includes the current season.
 
 ### 4. Configure environment variables
 
@@ -119,17 +123,21 @@ is the seeded admin.
 
 > Don't run the seed against your real project. It creates fake users.
 
-### 6. Check your API key and season access
+### 6. Look up ids and check season access
 
 ```bash
 pnpm check:api
 ```
 
-This makes **2 requests**. It confirms the key works, checks that `BARCA_TEAM_ID` and
-`CURRENT_SEASON` return fixtures, lists the fixture count for each competition, suggests
-`COPA_DEL_REY_LEAGUE_ID` if it finds the Copa in Barça's fixtures, and prints your remaining
-daily quota. If it reports no access to the season, your plan may not cover it. Check season
-coverage on your API-Football dashboard.
+Leave `BARCA_TEAM_ID` and the league ids blank the first time. The script:
+
+- looks up Barça's team id and the LaLiga, Champions League and Copa del Rey league ids, and
+  prints the lines to paste into `.env.local`
+- checks that `CURRENT_SEASON` returns Barça matches, with a count per competition
+- prints your remaining daily quota
+
+It uses **2 requests**, plus 1 for each id lookup still needed (5 at most). Run it again
+after pasting the ids to confirm.
 
 ### 7. Run the app
 
@@ -143,21 +151,25 @@ pnpm dev
 3. Go to `/admin` and click **Sync fixtures**, then **Sync squads**.
 4. Share the app URL and invite code with your friends.
 
-## API budget (free plan: ~100 requests/day, 10/minute)
+## API budget (free plan: 100 requests/day)
 
 Every call goes through one client,
-[`src/lib/api-football/client.ts`](src/lib/api-football/client.ts). It adds the key header,
+[`src/lib/highlightly/client.ts`](src/lib/highlightly/client.ts). It adds the key header,
 logs the remaining quota, caches responses in the `api_cache` table and **never retries**
 after a rate-limit or quota error. There's no live polling.
 
-| Job                  | When                             | Cost                                                                                     |
-| -------------------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
-| `/api/sync/fixtures` | daily                            | 1 request (all competitions at once; cached 12h)                                         |
-| `/api/sync/squads`   | daily, for matches ≤10 days away | 1 for the opponent, plus Barça once a week (cached 7 days)                               |
-| `/api/sync/lineups`  | ~1h before kickoff               | 1 per match. Empty responses aren't cached, so retrying before line-ups are out is safe. |
-| `/api/sync/stats`    | after full time                  | 1–2 per match (status refresh plus player stats), cached forever                         |
+| Job                  | When                             | Cost                                                                                           |
+| -------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `/api/sync/fixtures` | daily                            | 2 requests (Barça home + away matches, all competitions; cached 12h)                           |
+| `/api/sync/squads`   | daily, for matches ≤10 days away | Up to 3 per team: its last five games (cached 1 day) + line-ups of its last 2 (cached forever) |
+| `/api/sync/lineups`  | from 40 min before kickoff       | 1 per match. Empty responses aren't cached, so retrying before line-ups are out is safe.       |
+| `/api/sync/stats`    | after full time                  | 2 per match (match details with events + player box score), cached forever                     |
 
-That comes to roughly **5 requests per match**.
+That comes to roughly **8 requests per match**, well inside the free 100/day.
+
+**Player pools:** Highlightly has no squad endpoint, so each team's pickable players come from
+the line-ups (starters and full bench) of its last 2 matches. A player missing from both, for
+example someone back from injury, appears once they're named in a line-up.
 
 Each route accepts `Authorization: Bearer $CRON_SECRET` or a signed-in admin, plus optional
 `?matchId=<id>`. Example:
@@ -194,11 +206,11 @@ src/
       sync/                   # fixtures / squads / lineups / stats sync, points recalculation
     trivia/                   # reserved for the trivia module
   lib/
-    api-football/             # client, types, mappers, __fixtures__ (mock responses)
+    highlightly/              # client, types, mappers, __fixtures__ (mock responses)
     supabase/                 # server, admin (service role) and proxy clients
     env/                      # zod-validated env (server vs public)
 supabase/
-  migrations/                 # schema, RLS, save_fantasy_team RPC
+  migrations/                 # schema, RLS, save_fantasy_team RPC, bigint provider ids
   seed.sql                    # fictional local data
 scripts/check-api.ts          # pnpm check:api
 ```
@@ -213,12 +225,12 @@ scripts/check-api.ts          # pnpm check:api
 | `pnpm format`               | Prettier (write); `pnpm format:check` to verify                                        |
 | `pnpm typecheck`            | `tsc --noEmit`                                                                         |
 | `pnpm test`                 | Vitest: scoring, validation, API client and mappers, plus migrations and RLS on PGlite |
-| `pnpm check:api`            | Verify the API key and season access (2 requests)                                      |
+| `pnpm check:api`            | Verify the API key, look up team/league ids, check season access (2–5 requests)        |
 
 ## Known limitations
 
-- **Own goals:** these aren't in `/fixtures/players`, so they default to 0. The admin can
-  enter them on `/admin`.
+- **Penalties saved:** Highlightly doesn't report these, so they default to 0. The admin can
+  enter them on `/admin`. Own goals do come through, from the match events.
 - **Goals conceded:** for outfield players this uses the team's total, because the API only
   reports goals conceded for keepers. **Clean sheets** are based on the final score.
 - **Prices:** default prices depend only on position, with a +1 premium for Barça players (see

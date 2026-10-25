@@ -4,6 +4,7 @@ import { isFinished, mapBoxScore, mapMatchDetail, statusCode } from "@/lib/highl
 
 import {
   check,
+  DAY,
   HOUR,
   MATCH_COLUMNS,
   type MatchRecord,
@@ -29,8 +30,10 @@ export async function syncStats(
     ? query.eq("id", matchId)
     : query
         .is("stats_synced_at", null)
-        // Give the API ~2.5h after kickoff to finish and settle stats.
+        // Give the API ~2.5h after kickoff to finish and settle stats…
         .lte("kickoff_at", new Date(now.getTime() - 2.5 * HOUR).toISOString())
+        // …but don't backfill older matches automatically (admins can pass matchId).
+        .gte("kickoff_at", new Date(now.getTime() - 3 * DAY).toISOString())
         .not("status", "in", "(PST,CANC,ABD)");
   const matches = check(await query.order("kickoff_at"), "load matches") as MatchRecord[];
   if (matches.length === 0) return { ok: true, message: "No finished matches waiting for stats." };

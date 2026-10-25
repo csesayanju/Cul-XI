@@ -29,7 +29,14 @@ export const apiFootballEnvSchema = z.object({
   LALIGA_LEAGUE_ID: z.preprocess(emptyToUndefined, positiveInt.default(140)),
   UCL_LEAGUE_ID: z.preprocess(emptyToUndefined, positiveInt.default(2)),
   COPA_DEL_REY_LEAGUE_ID: optionalPositiveInt,
-  CURRENT_SEASON: z.preprocess(emptyToUndefined, z.coerce.number().int().min(2000).max(2100)),
+  CURRENT_SEASON: z.preprocess(
+    emptyToUndefined,
+    z.coerce
+      .number({ error: "CURRENT_SEASON is required (the year the season starts, e.g. 2026)" })
+      .int()
+      .min(2000)
+      .max(2100),
+  ),
 });
 
 export const serverEnvSchema = publicEnvSchema.extend({

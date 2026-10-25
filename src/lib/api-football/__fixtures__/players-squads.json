@@ -1,0 +1,21 @@
+{
+  "get": "players/squads",
+  "parameters": { "team": "9001" },
+  "errors": [],
+  "results": 1,
+  "paging": { "current": 1, "total": 1 },
+  "response": [
+    {
+      "team": { "id": 9001, "name": "Real Ficticio", "logo": "https://example.invalid/9001.png" },
+      "players": [
+        { "id": 910001, "name": "D. Ruiz", "age": 29, "number": 1, "position": "Goalkeeper", "photo": "https://example.invalid/p/910001.png" },
+        { "id": 910003, "name": "J. Ortega", "age": 26, "number": 2, "position": "Defender", "photo": "https://example.invalid/p/910003.png" },
+        { "id": 910004, "name": "C. Navarro", "age": 31, "number": 4, "position": "Defender", "photo": "https://example.invalid/p/910004.png" },
+        { "id": 910008, "name": "A. Vega", "age": 24, "number": 10, "position": "Midfielder", "photo": "https://example.invalid/p/910008.png" },
+        { "id": 910009, "name": "M. Herrera", "age": 27, "number": 8, "position": "Midfielder", "photo": "https://example.invalid/p/910009.png" },
+        { "id": 910013, "name": "Á. Cano", "age": 28, "number": 9, "position": "Attacker", "photo": "https://example.invalid/p/910013.png" },
+        { "id": 910016, "name": "Y. Prospect", "age": 18, "number": null, "position": "Attacker", "photo": "https://example.invalid/p/910016.png" }
+      ]
+    }
+  ]
+}

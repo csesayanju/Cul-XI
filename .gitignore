@@ -1,0 +1,52 @@
+# --- Dependencies ---
+node_modules/
+.pnpm-store/
+.pnp
+.pnp.*
+.yarn/
+
+# --- Next.js / build output ---
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+*.tsbuildinfo
+
+# --- Testing ---
+coverage/
+
+# --- Env files (NEVER commit real secrets) ---
+.env
+.env.*
+!.env.example
+
+# --- Vercel ---
+.vercel
+
+# --- Supabase local ---
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+supabase/.env.*
+supabase/volumes/
+
+# --- Logs ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# --- OS / editor junk ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# --- Misc ---
+*.pem

@@ -1,8 +1,7 @@
 import "server-only";
 
-import { mapLineups } from "@/lib/api-football/mappers";
+import { hasLineups, mapLineups } from "@/lib/highlightly/mappers";
 
-import type { Position } from "../types";
 import {
   check,
   HOUR,
@@ -15,8 +14,8 @@ import { upsertPlayers } from "./players";
 
 /**
  * Fetches confirmed line-ups for matches kicking off within `windowHours` (default 1.5h).
- * Line-ups usually appear 20–40 minutes before kickoff; an empty response is not cached,
- * so calling again later is fine. Each match costs one request once line-ups exist.
+ * Highlightly publishes line-ups from ~40 minutes before kickoff; an empty response is not
+ * cached, so calling again later is fine. Each match costs one request once line-ups exist.
  */
 export async function syncLineups(
   ctx: SyncContext,
@@ -36,8 +35,8 @@ export async function syncLineups(
 
   const results: string[] = [];
   for (const match of matches) {
-    const { data } = await api.lineups(match.api_fixture_id, { shouldCache: (d) => d.length > 0 });
-    if (data.length === 0) {
+    const { data } = await api.lineups(match.api_fixture_id, { shouldCache: hasLineups });
+    if (!hasLineups(data)) {
       results.push(`${match.opponent_name}: not announced yet`);
       continue;
     }
@@ -46,14 +45,7 @@ export async function syncLineups(
     // Make sure late call-ups exist as players (position falls back to MID if unknown).
     const ids = await upsertPlayers(
       ctx,
-      entries.map((e) => ({
-        api_player_id: e.api_player_id,
-        name: e.name,
-        team_api_id: e.team_api_id,
-        team_name: e.team_name,
-        position: e.position ?? ("MID" satisfies Position),
-        shirt_number: e.shirt_number,
-      })),
+      entries.map((e) => ({ ...e, position: e.position ?? "MID" })),
     );
 
     // Everyone not named in the matchday squad is marked not_in_squad, then listed players updated.

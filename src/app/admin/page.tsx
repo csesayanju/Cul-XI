@@ -54,7 +54,7 @@ export default async function AdminPage({
 
   return (
     <>
-      <PageTitle subtitle="Sync data from API-Football (free plan ≈ 100 requests/day) and fix stats.">
+      <PageTitle subtitle="Sync data from Highlightly (free plan: 100 requests/day) and fix stats.">
         Admin
       </PageTitle>
 

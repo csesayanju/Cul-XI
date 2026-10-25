@@ -1,22 +1,22 @@
 import "server-only";
 
-import { mapFixtures } from "@/lib/api-football/mappers";
+import { mapMatches } from "@/lib/highlightly/mappers";
 
 import { check, HOUR, type SyncContext, type SyncResult } from "./context";
 
 /**
- * Fetches Barça's fixtures for the season (ONE request covers every competition), upserts
- * them, and marks fantasy teams locked for matches that have kicked off.
+ * Fetches Barça's matches for the season (2 requests: home + away, every competition),
+ * upserts the tracked ones, and marks fantasy teams locked for matches that have kicked off.
  * Cached for 12 hours, so calling this more often costs nothing.
  */
 export async function syncFixtures(ctx: SyncContext, { force = false } = {}): Promise<SyncResult> {
   const { db, api, config, now } = ctx;
-  const { data, fromCache } = await api.teamFixtures(config.barcaTeamId, config.season, {
+  const { data, fromCache } = await api.teamSeasonMatches(config.barcaTeamId, config.season, {
     maxAgeMs: 12 * HOUR,
     force,
-    shouldCache: (d) => d.length > 0,
+    shouldCache: (page) => page.data.length > 0,
   });
-  const rows = mapFixtures(data, config);
+  const rows = mapMatches(data, config);
 
   if (rows.length > 0) {
     check(

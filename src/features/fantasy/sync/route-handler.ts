@@ -2,7 +2,7 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 
-import { ApiFootballError } from "@/lib/api-football/client";
+import { ProviderError } from "@/lib/highlightly/client";
 import { isCronOrAdmin } from "@/lib/auth";
 
 import { createSyncContext, type SyncContext, type SyncResult } from "./context";
@@ -39,7 +39,7 @@ export function createSyncRoute(
       });
       return NextResponse.json(result);
     } catch (err) {
-      const status = err instanceof ApiFootballError && err.kind === "rate_limit" ? 429 : 500;
+      const status = err instanceof ProviderError && err.kind === "rate_limit" ? 429 : 500;
       const message = err instanceof Error ? err.message : "Sync failed";
       console.error("[sync]", message);
       return NextResponse.json({ ok: false, message }, { status });

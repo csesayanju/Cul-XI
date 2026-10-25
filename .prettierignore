@@ -3,4 +3,4 @@ node_modules
 coverage
 pnpm-lock.yaml
 supabase/.temp
-src/lib/api-football/__fixtures__
+src/lib/highlightly/__fixtures__

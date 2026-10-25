@@ -19,15 +19,25 @@ export const publicEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: required("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
 });
 
-export const apiFootballEnvSchema = z.object({
-  API_FOOTBALL_KEY: required("API_FOOTBALL_KEY"),
-  API_FOOTBALL_BASE_URL: z.preprocess(
+const requiredId = (name: string, hint: string) =>
+  z.preprocess(
     emptyToUndefined,
-    z.url().default("https://v3.football.api-sports.io"),
+    z.coerce
+      .number({ error: `${name} is required (${hint})` })
+      .int()
+      .positive(),
+  );
+
+/** Data provider settings. Team/league ids are optional here so `pnpm check:api` can discover them. */
+export const providerEnvSchema = z.object({
+  HIGHLIGHTLY_API_KEY: required("HIGHLIGHTLY_API_KEY"),
+  HIGHLIGHTLY_BASE_URL: z.preprocess(
+    emptyToUndefined,
+    z.url().default("https://soccer.highlightly.net"),
   ),
-  BARCA_TEAM_ID: z.preprocess(emptyToUndefined, positiveInt.default(529)),
-  LALIGA_LEAGUE_ID: z.preprocess(emptyToUndefined, positiveInt.default(140)),
-  UCL_LEAGUE_ID: z.preprocess(emptyToUndefined, positiveInt.default(2)),
+  BARCA_TEAM_ID: optionalPositiveInt,
+  LALIGA_LEAGUE_ID: optionalPositiveInt,
+  UCL_LEAGUE_ID: optionalPositiveInt,
   COPA_DEL_REY_LEAGUE_ID: optionalPositiveInt,
   CURRENT_SEASON: z.preprocess(
     emptyToUndefined,
@@ -40,7 +50,10 @@ export const apiFootballEnvSchema = z.object({
 });
 
 export const serverEnvSchema = publicEnvSchema.extend({
-  ...apiFootballEnvSchema.shape,
+  ...providerEnvSchema.shape,
+  BARCA_TEAM_ID: requiredId("BARCA_TEAM_ID", "run `pnpm check:api` to look it up"),
+  LALIGA_LEAGUE_ID: requiredId("LALIGA_LEAGUE_ID", "run `pnpm check:api` to look it up"),
+  UCL_LEAGUE_ID: requiredId("UCL_LEAGUE_ID", "run `pnpm check:api` to look it up"),
   SUPABASE_SERVICE_ROLE_KEY: required("SUPABASE_SERVICE_ROLE_KEY"),
   APP_URL: z.preprocess(emptyToUndefined, z.url().default("http://localhost:3000")),
   ADMIN_EMAILS: z
@@ -59,7 +72,7 @@ export const serverEnvSchema = publicEnvSchema.extend({
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
-export type ApiFootballEnv = z.infer<typeof apiFootballEnvSchema>;
+export type ProviderEnv = z.infer<typeof providerEnvSchema>;
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
 /**

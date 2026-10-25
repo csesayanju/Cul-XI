@@ -1,6 +1,12 @@
 import "server-only";
 
-import { mapSquad } from "@/lib/api-football/mappers";
+import {
+  hasLineups,
+  playerPoolFromLineups,
+  recentFinished,
+  type PlayerRow,
+} from "@/lib/highlightly/mappers";
+import type { HlLineups } from "@/lib/highlightly/types";
 
 import {
   check,
@@ -12,15 +18,36 @@ import {
 } from "./context";
 import { upsertPlayers } from "./players";
 
+/** How many recent matches' line-ups make up a team's player pool. */
+const POOL_MATCHES = 2;
+
 /**
- * Loads squads for upcoming matches (next `days` days) that have not been synced yet:
- * Barça's squad (cached 7 days, shared by every match) + each opponent's squad.
+ * Builds a team's player pool from the line-ups (starters + bench) of its last
+ * `POOL_MATCHES` finished games. Cost: 1 request (last five games, cached 1 day) + up to
+ * `POOL_MATCHES` line-up requests (cached forever). Highlightly has no squad endpoint.
+ */
+async function teamPool({ api }: SyncContext, teamId: number): Promise<PlayerRow[]> {
+  const { data: lastFive } = await api.lastFiveGames(teamId, {
+    maxAgeMs: DAY,
+    shouldCache: (d) => d.length > 0,
+  });
+  const lineups: HlLineups[] = [];
+  for (const m of recentFinished(lastFive, POOL_MATCHES)) {
+    const { data } = await api.lineups(m.id, { shouldCache: hasLineups });
+    if (hasLineups(data)) lineups.push(data);
+  }
+  return playerPoolFromLineups(lineups, teamId);
+}
+
+/**
+ * Loads player pools for upcoming matches (next `days` days) that have not been synced
+ * yet: Barça (shared by every match in the run) + each opponent.
  */
 export async function syncSquads(
   ctx: SyncContext,
   { matchId, days = 10 }: { matchId?: number; days?: number } = {},
 ): Promise<SyncResult> {
-  const { db, api, config, now } = ctx;
+  const { db, config, now } = ctx;
 
   let query = db.from("matches").select(MATCH_COLUMNS);
   query = matchId
@@ -33,13 +60,15 @@ export async function syncSquads(
 
   if (matches.length === 0) return { ok: true, message: "No matches need squads." };
 
+  const barca = await teamPool(ctx, config.barcaTeamId);
   const synced: string[] = [];
   for (const match of matches) {
-    const [barca, opponent] = await Promise.all([
-      api.squad(config.barcaTeamId, { maxAgeMs: 7 * DAY, shouldCache: (d) => d.length > 0 }),
-      api.squad(match.opponent_team_id, { maxAgeMs: 7 * DAY, shouldCache: (d) => d.length > 0 }),
-    ]);
-    const rows = mapSquad([...barca.data, ...opponent.data]);
+    const opponent = await teamPool(ctx, match.opponent_team_id);
+    const rows = [...barca, ...opponent];
+    if (rows.length === 0) {
+      synced.push(`${match.opponent_name}: no recent line-ups found`);
+      continue;
+    }
     const ids = await upsertPlayers(ctx, rows);
 
     check(
@@ -57,8 +86,10 @@ export async function syncSquads(
       await db.from("matches").update({ squads_synced_at: now.toISOString() }).eq("id", match.id),
       "mark squads synced",
     );
-    synced.push(`${match.opponent_name} (${rows.length} players)`);
+    synced.push(
+      `${match.opponent_name} (${barca.length} Barça + ${opponent.length} opponent players)`,
+    );
   }
 
-  return { ok: true, message: `Squads synced: ${synced.join(", ")}.` };
+  return { ok: true, message: `Squads: ${synced.join("; ")}.` };
 }

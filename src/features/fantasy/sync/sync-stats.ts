@@ -1,6 +1,6 @@
 import "server-only";
 
-import { isFinished, mapFixturePlayerStats, mapFixtures } from "@/lib/api-football/mappers";
+import { isFinished, mapBoxScore, mapMatchDetail, statusCode } from "@/lib/highlightly/mappers";
 
 import {
   check,
@@ -14,8 +14,8 @@ import { upsertPlayers } from "./players";
 import { recalculatePoints } from "./recalculate-points";
 
 /**
- * After full time: refresh the fixture's final status/score (1 request, skipped if already
- * finished in our DB), fetch per-player stats ONCE (1 request, cached forever), store them
+ * After full time: fetch the match details (final state, score and events — 1 request, cached
+ * forever once finished) and the player box score (1 request, cached forever), store the stats
  * — never overwriting rows an admin entered manually — and recalculate points.
  */
 export async function syncStats(
@@ -37,34 +37,34 @@ export async function syncStats(
 
   const results: string[] = [];
   for (let match of matches) {
-    if (!isFinished(match.status) || match.barca_goals == null) {
-      const { data } = await api.fixture(match.api_fixture_id, {
-        maxAgeMs: HOUR,
-        shouldCache: (d) => d.length > 0 && isFinished(d[0]!.fixture.status.short),
-      });
-      const [row] = mapFixtures(data, config);
-      if (row) {
-        check(await db.from("matches").update(row).eq("id", match.id), "update match");
-        match = { ...match, ...row };
-      }
+    const { data: details } = await api.match(match.api_fixture_id, {
+      maxAgeMs: HOUR,
+      shouldCache: (d) => !!d[0] && isFinished(statusCode(d[0].state.description)),
+    });
+    const detail = details[0];
+    if (detail) {
+      const row = mapMatchDetail(detail, config.barcaTeamId);
+      check(await db.from("matches").update(row).eq("id", match.id), "update match");
+      match = { ...match, ...row };
     }
     if (!isFinished(match.status)) {
       results.push(`${match.opponent_name}: not finished (status ${match.status})`);
       continue;
     }
 
-    const { data } = await api.fixturePlayers(match.api_fixture_id, {
-      shouldCache: (d) => d.length > 0,
+    const { data } = await api.boxScore(match.api_fixture_id, {
+      shouldCache: (d) => d.some((t) => t.players.length > 0),
     });
-    if (data.length === 0) {
+    if (!data.some((t) => t.players.length > 0)) {
       results.push(`${match.opponent_name}: stats not available yet`);
       continue;
     }
 
-    const entries = mapFixturePlayerStats(data, {
+    const entries = mapBoxScore(data, {
       barcaTeamId: config.barcaTeamId,
       barcaGoals: match.barca_goals ?? 0,
       opponentGoals: match.opponent_goals ?? 0,
+      events: detail?.events,
     });
 
     // Players we don't know yet (rare) are added; position comes from the squad sync normally.
@@ -88,7 +88,7 @@ export async function syncStats(
           name: e.name,
           team_api_id: e.team_api_id,
           team_name: e.team_api_id === config.barcaTeamId ? "Barcelona" : match.opponent_name,
-          position: "MID",
+          position: e.position ?? "MID",
           shirt_number: null,
         })),
       );

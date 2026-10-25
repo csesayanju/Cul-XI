@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { PlayerRow } from "@/lib/api-football/mappers";
+import type { PlayerRow } from "@/lib/highlightly/mappers";
 
 import { defaultPrice } from "../pricing";
 import { check, type SyncContext } from "./context";

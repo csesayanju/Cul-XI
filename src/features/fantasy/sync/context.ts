@@ -2,14 +2,14 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { ApiFootballClient } from "@/lib/api-football/client";
-import type { TrackedLeagues } from "@/lib/api-football/mappers";
-import { getApiFootball, trackedLeagues } from "@/lib/api-football/server";
+import type { HighlightlyClient } from "@/lib/highlightly/client";
+import type { TrackedLeagues } from "@/lib/highlightly/mappers";
+import { getHighlightly, trackedLeagues } from "@/lib/highlightly/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export interface SyncContext {
   db: SupabaseClient;
-  api: ApiFootballClient;
+  api: HighlightlyClient;
   config: TrackedLeagues & { season: number };
   now: Date;
 }
@@ -17,7 +17,7 @@ export interface SyncContext {
 export function createSyncContext(): SyncContext {
   return {
     db: createAdminClient(),
-    api: getApiFootball(),
+    api: getHighlightly(),
     config: trackedLeagues(),
     now: new Date(),
   };

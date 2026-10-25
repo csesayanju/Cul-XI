@@ -7,10 +7,10 @@ import { Button, Input, Notice } from "@/components/ui";
 import type { PlayerMatchStats } from "@/features/fantasy/types";
 
 const JOB_LABELS: Record<AdminJob, { label: string; hint: string }> = {
-  fixtures: { label: "Sync fixtures", hint: "1 request, cached 12h" },
-  squads: { label: "Sync squads", hint: "≤2 requests per new match" },
-  lineups: { label: "Sync line-ups", hint: "1 request per match, ~1h before kickoff" },
-  stats: { label: "Sync stats + points", hint: "1–2 requests per finished match" },
+  fixtures: { label: "Sync fixtures", hint: "2 requests, cached 12h" },
+  squads: { label: "Sync squads", hint: "≤3 per team, mostly cached" },
+  lineups: { label: "Sync line-ups", hint: "1 request, from 40 min before kickoff" },
+  stats: { label: "Sync stats + points", hint: "2 requests per finished match" },
   points: { label: "Recalculate points", hint: "No API requests" },
 };
 

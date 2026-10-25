@@ -1,7 +1,7 @@
 import type { Position } from "./types";
 
 /**
- * Default credit prices for players imported from API-Football (which has no prices).
+ * Default credit prices for players imported from the data provider (which has no prices).
  * Set so an all-Barça-heavy XI breaks the 100-credit budget and choices matter.
  * The admin can adjust individual prices afterwards; re-syncing never overwrites them.
  */

@@ -1,0 +1,21 @@
+[
+  {
+    "id": 1990000001,
+    "round": "Regular Season - 9",
+    "date": "2026-10-18T19:00:00.000Z",
+    "country": { "code": "ES", "name": "Spain", "logo": "https://example.invalid/es.svg" },
+    "homeTeam": { "id": 1100000529, "name": "Barcelona", "logo": "https://example.invalid/t/529.png" },
+    "awayTeam": { "id": 1100009001, "name": "Real Ficticio", "logo": "https://example.invalid/t/9001.png" },
+    "league": { "id": 119924, "season": 2026, "name": "La Liga", "logo": "https://example.invalid/l/119924.png" },
+    "state": { "description": "Finished", "clock": 90, "score": { "current": "2 - 1", "penalties": null } },
+    "venue": { "name": "Home Stadium", "city": "Barcelona", "country": "Spain", "capacity": "50000" },
+    "events": [
+      { "team": { "id": 1100000529, "name": "Barcelona", "logo": "" }, "time": "23", "type": "Goal", "playerId": 2200000008, "player": "A. Font", "assistingPlayerId": 2200000005, "assist": "O. Roca", "substituted": null },
+      { "team": { "id": 1100000529, "name": "Barcelona", "logo": "" }, "time": "41", "type": "Yellow Card", "playerId": 2200000004, "player": "À. Serra", "assistingPlayerId": null, "assist": null, "substituted": null },
+      { "team": { "id": 1100009001, "name": "Real Ficticio", "logo": "" }, "time": "55", "type": "Own Goal", "playerId": 2200000004, "player": "À. Serra", "assistingPlayerId": null, "assist": null, "substituted": null },
+      { "team": { "id": 1100009001, "name": "Real Ficticio", "logo": "" }, "time": "64", "type": "Red Card", "playerId": 2210000006, "player": "L. Romero", "assistingPlayerId": null, "assist": null, "substituted": null },
+      { "team": { "id": 1100000529, "name": "Barcelona", "logo": "" }, "time": "70", "type": "Missed Penalty", "playerId": 2200000013, "player": "I. Sala", "assistingPlayerId": null, "assist": null, "substituted": null },
+      { "team": { "id": 1100000529, "name": "Barcelona", "logo": "" }, "time": "81", "type": "Goal", "playerId": 2200000013, "player": "I. Sala", "assistingPlayerId": null, "assist": null, "substituted": null }
+    ]
+  }
+]

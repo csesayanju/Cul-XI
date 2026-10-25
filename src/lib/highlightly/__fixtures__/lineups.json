@@ -1,0 +1,57 @@
+{
+  "homeTeam": {
+    "id": 1100000529,
+    "name": "Barcelona",
+    "logo": "https://example.invalid/t/529.png",
+    "formation": "4-3-3",
+    "initialLineup": [
+      [{ "id": 2200000001, "name": "M. Ferrer", "number": 1, "position": "Goalkeeper" }],
+      [
+        { "id": 2200000003, "name": "J. Puig", "number": 2, "position": "Defender" },
+        { "id": 2200000004, "name": "À. Serra", "number": 3, "position": "Defender" },
+        { "id": 2200000005, "name": "O. Roca", "number": 4, "position": "Defender" },
+        { "id": 2200000006, "name": "B. Soler", "number": 5, "position": "Defender" }
+      ],
+      [
+        { "id": 2200000008, "name": "A. Font", "number": 8, "position": "Midfielder" },
+        { "id": 2200000009, "name": "P. Riera", "number": 6, "position": "Midfielder" },
+        { "id": 2200000010, "name": "G. Mas", "number": 16, "position": "Midfielder" }
+      ],
+      [
+        { "id": 2200000014, "name": "H. Prat", "number": 11, "position": "Forward" },
+        { "id": 2200000013, "name": "I. Sala", "number": 9, "position": "Forward" },
+        { "id": 2200000015, "name": "L. Camps", "number": 19, "position": "Forward" }
+      ]
+    ],
+    "substitutes": [
+      { "id": 2200000002, "name": "P. Vidal", "number": 13, "position": "Goalkeeper" },
+      { "id": 2200000011, "name": "Q. Bosch", "number": 20, "position": "Midfielder" }
+    ]
+  },
+  "awayTeam": {
+    "id": 1100009001,
+    "name": "Real Ficticio",
+    "logo": "https://example.invalid/t/9001.png",
+    "formation": "4-4-2",
+    "initialLineup": [
+      [{ "id": 2210000001, "name": "D. Ruiz", "number": 1, "position": "Goalkeeper" }],
+      [
+        { "id": 2210000003, "name": "J. Ortega", "number": 2, "position": "Defender" },
+        { "id": 2210000004, "name": "C. Navarro", "number": 4, "position": "Defender" },
+        { "id": 2210000005, "name": "P. Gil", "number": 5, "position": "Defender" },
+        { "id": 2210000006, "name": "L. Romero", "number": 3, "position": "Defender" }
+      ],
+      [
+        { "id": 2210000008, "name": "A. Vega", "number": 10, "position": "Midfielder" },
+        { "id": 2210000009, "name": "M. Herrera", "number": 8, "position": "Midfielder" },
+        { "id": 2210000010, "name": "T. Díaz", "number": 6, "position": "Midfielder" },
+        { "id": 2210000011, "name": "R. Ortiz", "number": 14, "position": "Midfielder" }
+      ],
+      [
+        { "id": 2210000013, "name": "Á. Cano", "number": 9, "position": "Forward" },
+        { "id": 2210000014, "name": "D. Rojas", "number": 7, "position": "Forward" }
+      ]
+    ],
+    "substitutes": [{ "id": 2210000002, "name": "S. Molina", "number": 25, "position": "Goalkeeper" }]
+  }
+}

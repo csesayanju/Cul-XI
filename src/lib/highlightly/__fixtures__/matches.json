@@ -1,0 +1,36 @@
+{
+  "data": [
+    {
+      "id": 1990000001,
+      "round": "Regular Season - 9",
+      "date": "2026-10-18T19:00:00.000Z",
+      "country": { "code": "ES", "name": "Spain", "logo": "https://example.invalid/es.svg" },
+      "homeTeam": { "id": 1100000529, "name": "Barcelona", "logo": "https://example.invalid/t/529.png", "type": "club" },
+      "awayTeam": { "id": 1100009001, "name": "Real Ficticio", "logo": "https://example.invalid/t/9001.png", "type": "club" },
+      "league": { "id": 119924, "season": 2026, "name": "La Liga", "logo": "https://example.invalid/l/119924.png" },
+      "state": { "description": "Finished", "clock": 90, "score": { "current": "2 - 1", "penalties": null } }
+    },
+    {
+      "id": 1990000002,
+      "round": "League Stage - 4",
+      "date": "2026-10-28T20:00:00.000Z",
+      "country": { "code": "WO", "name": "World", "logo": "https://example.invalid/wo.svg" },
+      "homeTeam": { "id": 1100009002, "name": "Atlético Imaginario", "logo": "https://example.invalid/t/9002.png", "type": "club" },
+      "awayTeam": { "id": 1100000529, "name": "Barcelona", "logo": "https://example.invalid/t/529.png", "type": "club" },
+      "league": { "id": 2486, "season": 2026, "name": "UEFA Champions League", "logo": "https://example.invalid/l/2486.png" },
+      "state": { "description": "Not started", "clock": null, "score": { "current": null, "penalties": null } }
+    },
+    {
+      "id": 1990000003,
+      "round": "Club Friendlies 3",
+      "date": "2026-07-30T18:00:00.000Z",
+      "country": { "code": "WO", "name": "World", "logo": "https://example.invalid/wo.svg" },
+      "homeTeam": { "id": 1100000529, "name": "Barcelona", "logo": "https://example.invalid/t/529.png", "type": "club" },
+      "awayTeam": { "id": 1100009003, "name": "Preseason United", "logo": "https://example.invalid/t/9003.png", "type": "club" },
+      "league": { "id": 33333, "season": 2026, "name": "Club Friendlies", "logo": "https://example.invalid/l/33333.png" },
+      "state": { "description": "Finished", "clock": 90, "score": { "current": "3 - 0", "penalties": null } }
+    }
+  ],
+  "pagination": { "totalCount": 3, "offset": 0, "limit": 100 },
+  "plan": { "tier": "BASIC", "message": "" }
+}

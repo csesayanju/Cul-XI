@@ -7,8 +7,8 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Skip static assets, images and the cron-protected sync API.
+  // Skip static assets, images and the cron-protected sync/maintenance APIs.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/sync|.*\\.(?:svg|png|jpg|ico|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/sync|api/maintenance|.*\\.(?:svg|png|jpg|ico|webp)$).*)",
   ],
 };

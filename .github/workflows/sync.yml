@@ -1,6 +1,6 @@
 name: Sync match data
 
-# Calls the deployed app's protected /api/sync/* endpoints on a schedule.
+# Calls the deployed app's protected /api/sync/* and /api/maintenance/* endpoints on a schedule.
 # Needs (repo → Settings → Secrets and variables → Actions):
 #   - variable APP_URL     e.g. https://cule-xi.vercel.app
 #   - secret   CRON_SECRET same value as in Vercel
@@ -10,13 +10,14 @@ name: Sync match data
 on:
   schedule:
     - cron: "5,20,35,50 * * * *" # every 15 min: line-ups + stats
-    - cron: "30 5 * * *" # daily 05:30 UTC: fixtures + squads
+    - cron: "30 5 * * *" # daily 05:30 UTC: fixtures + squads + player photos
+    - cron: "45 */2 * * *" # every 2 hours: delete unused guest accounts older than 2 hours
   workflow_dispatch:
     inputs:
       job:
         description: "Which sync to run"
         type: choice
-        options: [all, fixtures, squads, lineups, stats]
+        options: [all, fixtures, squads, photos, lineups, stats, guests]
         default: all
 
 permissions:
@@ -46,9 +47,11 @@ jobs:
             exit 0
           fi
           if [ "$EVENT" = "workflow_dispatch" ]; then
-            if [ "$INPUT_JOB" = "all" ]; then jobs="fixtures squads lineups stats"; else jobs="$INPUT_JOB"; fi
+            if [ "$INPUT_JOB" = "all" ]; then jobs="fixtures squads photos lineups stats guests"; else jobs="$INPUT_JOB"; fi
           elif [ "$SCHEDULE" = "30 5 * * *" ]; then
-            jobs="fixtures squads"
+            jobs="fixtures squads photos"
+          elif [ "$SCHEDULE" = "45 */2 * * *" ]; then
+            jobs="guests"
           else
             jobs="lineups stats"
           fi
@@ -61,11 +64,15 @@ jobs:
         run: |
           status=0
           for job in $JOBS; do
+            case "$job" in
+              guests) path="api/maintenance/guests" ;;
+              *) path="api/sync/$job" ;;
+            esac
             echo "::group::$job"
             code=$(curl -sS -o body.json -w "%{http_code}" -X POST \
               --max-time 90 \
               -H "Authorization: Bearer $CRON_SECRET" \
-              "${APP_URL%/}/api/sync/$job") || code=000
+              "${APP_URL%/}/$path") || code=000
             cat body.json 2>/dev/null; echo
             echo "HTTP $code"
             echo "::endgroup::"

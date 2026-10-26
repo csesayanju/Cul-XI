@@ -7,10 +7,12 @@ import { EMPTY_FORM, priceFor, type PlayerForm } from "@/features/fantasy/pricin
 import { createSyncContext, type SyncResult } from "@/features/fantasy/sync/context";
 import { recalculatePoints } from "@/features/fantasy/sync/recalculate-points";
 import { syncFixtures } from "@/features/fantasy/sync/sync-fixtures";
+import { syncPhotos } from "@/features/fantasy/sync/sync-photos";
 import { syncLineups } from "@/features/fantasy/sync/sync-lineups";
 import { syncSquads } from "@/features/fantasy/sync/sync-squads";
 import { syncStats } from "@/features/fantasy/sync/sync-stats";
 import type { Position } from "@/features/fantasy/types";
+import { cleanupGuests } from "@/features/maintenance/cleanup-guests";
 import { getSessionUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,6 +29,8 @@ const JOBS = {
   squads: (matchId?: number) => syncSquads(createSyncContext(), { matchId }),
   lineups: (matchId?: number) => syncLineups(createSyncContext(), { matchId }),
   stats: (matchId?: number) => syncStats(createSyncContext(), { matchId }),
+  photos: (matchId?: number) => syncPhotos(createSyncContext(), { matchId }),
+  guests: () => cleanupGuests(createSyncContext().db),
   points: async (matchId?: number): Promise<SyncResult> => {
     if (!matchId) return { ok: false, message: "Choose a match to recalculate." };
     return recalculatePoints(createSyncContext(), matchId);
@@ -60,6 +64,14 @@ const idsSchema = z.object({
 const priceSchema = z.object({
   price: z.coerce.number().positive().max(20).multipleOf(0.5),
   priceLocked: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
+});
+
+const photoSchema = z.object({
+  photoUrl: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+    z.url({ protocol: /^https$/, error: "Photo URL must start with https://" }).nullable(),
+  ),
+  photoLocked: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
 });
 
 const statsSchema = z.object({
@@ -99,6 +111,38 @@ export async function saveManualStats(
     if (!ids.success) return firstIssue(ids.error);
     const { matchId, playerId } = ids.data;
     const supabase = await createClient();
+
+    if (fields.intent === "photo") {
+      const parsed = photoSchema.safeParse(fields);
+      if (!parsed.success) return firstIssue(parsed.error);
+      const { photoUrl, photoLocked } = parsed.data;
+      const update = photoLocked
+        ? {
+            photo_url: photoUrl,
+            photo_credit: photoUrl ? "Set by admin" : null,
+            photo_page_url: null,
+            photo_locked: true,
+          }
+        : // Back to automatic: clear and let the next daily lookup try again.
+          {
+            photo_url: null,
+            photo_credit: null,
+            photo_page_url: null,
+            photo_locked: false,
+            photo_checked_at: null,
+          };
+      const { error } = await supabase.from("players").update(update).eq("id", playerId);
+      if (error) return { ok: false, message: `Photo not saved: ${error.message}` };
+      revalidatePath("/", "layout");
+      return {
+        ok: true,
+        message: !photoLocked
+          ? "Photo reset: the next Wikipedia lookup will try again."
+          : photoUrl
+            ? "Photo saved and locked."
+            : "Photo removed and locked (initials will show).",
+      };
+    }
 
     if (fields.intent === "price") {
       const parsed = priceSchema.safeParse(fields);

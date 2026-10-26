@@ -11,6 +11,8 @@ const JOB_LABELS: Record<AdminJob, { label: string; hint: string }> = {
   squads: { label: "Sync squads", hint: "≤3 per team, mostly cached" },
   lineups: { label: "Sync line-ups", hint: "1 request, from 40 min before kickoff" },
   stats: { label: "Sync stats + points", hint: "2 requests per finished match" },
+  photos: { label: "Find player photos", hint: "Wikipedia, no API quota" },
+  guests: { label: "Delete unused guests", hint: "Older than 2h, never joined" },
   points: { label: "Recalculate points", hint: "No API requests" },
 };
 
@@ -65,6 +67,8 @@ export interface EditablePlayer {
   position: string;
   price: number;
   priceLocked: boolean;
+  photoUrl: string | null;
+  photoLocked: boolean;
   stats: (PlayerMatchStats & { source: "api" | "manual" }) | null;
 }
 
@@ -152,6 +156,39 @@ export function StatsEditor({ matchId, players }: { matchId: number; players: Ed
             <p className="text-xs text-ink-muted">
               Price changes apply to teams picked afterwards; saved teams keep the price they paid.
             </p>
+          </fieldset>
+          <fieldset className="space-y-2 rounded-xl border border-line p-3">
+            <legend className="px-1 text-sm font-semibold">Photo</legend>
+            <div className="flex items-end gap-2">
+              <label className="flex-1 text-sm">
+                Image URL (https, leave empty for no photo)
+                <Input
+                  name="photoUrl"
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://upload.wikimedia.org/…"
+                  defaultValue={player.photoUrl ?? ""}
+                />
+              </label>
+              <Button
+                type="submit"
+                name="intent"
+                value="photo"
+                variant="secondary"
+                disabled={pending}
+              >
+                Save photo
+              </Button>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="photoLocked"
+                defaultChecked={player.photoLocked}
+                className="size-5"
+              />
+              Set photo manually (untick to let the daily Wikipedia lookup choose)
+            </label>
           </fieldset>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {NUMBER_FIELDS.map((f) => (

@@ -47,6 +47,8 @@ export default async function AdminPage({
           position: p.position,
           price: p.price,
           priceLocked: p.priceLocked,
+          photoUrl: p.photoUrl,
+          photoLocked: p.photoLocked,
           stats: row ? { ...toStats(row), source: row.source as "api" | "manual" } : null,
         };
       })

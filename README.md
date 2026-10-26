@@ -205,8 +205,8 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://your-app.vercel.app/api/syn
    - a **variable** `APP_URL` with your Vercel URL, e.g. `https://cule-xi.vercel.app`
    - a **secret** `CRON_SECRET` with the same value as in Vercel
 
-   The workflow runs line-ups and stats every 15 minutes, and fixtures and squads daily at 05:30
-   UTC. Each job only calls Highlightly when something is due, so most runs use no requests. You
+   The workflow runs line-ups and stats every 15 minutes; fixtures, squads (with form-based
+   prices) and player photos daily at 05:30 UTC; and deletes unused guest accounts every 2 hours. Each job only calls Highlightly when something is due, so most runs use no requests. You
    can also run it by hand from the **Actions** tab (**Sync match data → Run workflow**).
 
 ## Project structure
@@ -224,6 +224,7 @@ src/
     trivia/                   # reserved for the trivia module
   lib/
     highlightly/              # client, types, mappers, __fixtures__ (mock responses)
+    wikipedia/                # player photo lookup (Wikimedia Commons) with attribution
     supabase/                 # server, admin (service role) and proxy clients
     env/                      # zod-validated env (server vs public)
 supabase/
@@ -250,9 +251,15 @@ scripts/check-api.ts          # pnpm check:api
   enter them on `/admin`. Own goals do come through, from the match events.
 - **Goals conceded:** for outfield players this uses the team's total, because the API only
   reports goals conceded for keepers. **Clean sheets** are based on the final score.
-- **Prices:** default prices depend only on position, with a +1 premium for Barça players (see
-  `src/features/fantasy/pricing.ts`). The admin can edit them. Saved teams keep the prices
-  they paid.
+- **Prices:** set from each player's last 3 matches (minutes, match rating, goals and assists)
+  and refreshed daily. See `src/features/fantasy/pricing.ts` and the `/rules` page. Admins can
+  lock a price on `/admin`. Saved teams keep the prices they paid.
+- **Player photos:** Highlightly doesn't provide any, so photos come from Wikimedia Commons
+  (free licences, credited in the app and on `/credits`). A photo is only used when the
+  Wikipedia article is clearly the same footballer at the same club and the image file is named
+  after them; otherwise initials show. Admins can set, fix or remove a photo on `/admin`.
+- **Guest accounts:** guests who haven't joined a league or saved a team within 2 hours are
+  deleted automatically (every 2 hours).
 - **Database types:** these are hand-typed. Run
   `supabase gen types typescript --linked > src/lib/supabase/database.types.ts` to generate
   them.

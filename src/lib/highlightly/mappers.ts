@@ -1,4 +1,5 @@
-import { EMPTY_FORM, type PlayerForm } from "@/features/fantasy/pricing";
+import type { Injury } from "@/features/fantasy/availability";
+import { EMPTY_FORM, type PlayerForm, type SeasonStats } from "@/features/fantasy/pricing";
 import type { Competition, PlayerMatchStats, Position } from "@/features/fantasy/types";
 
 import type {
@@ -10,6 +11,8 @@ import type {
   HlLineups,
   HlMatch,
   HlMatchDetail,
+  HlCompetitionStats,
+  HlInjury,
   HlMarketValue,
   HlMatchState,
   HlPosition,
@@ -150,13 +153,15 @@ export interface PlayerRow {
   photo_url?: string | null;
   /** Full registered name, when the box score provides it (helps photo lookups). */
   full_name?: string | null;
-  /** Recent form, set by the squad sync; drives automatic pricing. */
+  /** Last-30-days form, set by the squad sync; drives automatic pricing. */
   form?: PlayerForm;
+  /** The team's most recent match (matches = 1). */
+  last_match?: PlayerForm;
 }
 
 export interface LineupEntry extends Omit<
   PlayerRow,
-  "position" | "photo_url" | "form" | "full_name"
+  "position" | "photo_url" | "form" | "full_name" | "last_match"
 > {
   position: Position | null;
   lineup_status: "starting" | "bench";
@@ -206,6 +211,7 @@ export const toPlayerRow = (e: LineupEntry | PlayerRow): PlayerRow => ({
   ...("photo_url" in e && e.photo_url ? { photo_url: e.photo_url } : {}),
   ...("full_name" in e && e.full_name ? { full_name: e.full_name } : {}),
   ...("form" in e && e.form ? { form: e.form } : {}),
+  ...("last_match" in e && e.last_match ? { last_match: e.last_match } : {}),
 });
 
 /** Box-score stats come back as an object from the live API but an array in the spec: accept both. */
@@ -296,7 +302,11 @@ export function playerPoolFromLineups(
   teamId: number,
   recent: Map<number, RecentPlayer> = new Map(),
   matchesLookedAt = lineupsNewestFirst.length,
+  /** Form in the team's most recent match (see formWindows); omitted = unknown. */
+  last?: Map<number, RecentPlayer>,
 ): PlayerRow[] {
+  const lastOf = (id: number): PlayerForm | undefined =>
+    last && last.size > 0 ? (last.get(id)?.form ?? { ...EMPTY_FORM, matches: 1 }) : undefined;
   const pool = new Map<number, PlayerRow>();
   for (const lineups of lineupsNewestFirst) {
     for (const e of mapLineups(lineups)) {
@@ -310,6 +320,7 @@ export function playerPoolFromLineups(
           photo_url: r?.photoUrl ?? null,
           full_name: r?.fullName ?? null,
           form: r?.form ?? { ...EMPTY_FORM, matches: matchesLookedAt },
+          last_match: lastOf(e.api_player_id),
         }),
       );
     }
@@ -330,6 +341,7 @@ export function playerPoolFromLineups(
         photo_url: r.photoUrl,
         full_name: r.fullName,
         form: r.form,
+        last_match: lastOf(id),
       }),
     );
   }
@@ -351,6 +363,90 @@ export function latestMarketValue(history: HlMarketValue[] | null | undefined): 
     if (!best || at > best.at) best = { at, value: h.value };
   }
   return best?.value ?? null;
+}
+
+/** "dd.mm.yyyy" or "dd/mm/yyyy" -> "yyyy-mm-dd" (or null). */
+export function isoFromDmy(d: string | null | undefined): string | null {
+  const m = d?.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+  return m ? `${m[3]}-${m[2]!.padStart(2, "0")}-${m[1]!.padStart(2, "0")}` : null;
+}
+
+/**
+ * The injury the player has right now (started on/before today, no return date yet or a
+ * return date today or later), or null. If several overlap, the most recent start wins.
+ */
+export function currentInjury(
+  injuries: HlInjury[] | null | undefined,
+  now = new Date(),
+): Injury | null {
+  const today = now.toISOString().slice(0, 10);
+  let best: Injury | null = null;
+  for (const i of injuries ?? []) {
+    const from = isoFromDmy(i.fromDate);
+    const until = isoFromDmy(i.toDate);
+    if (!from || from > today) continue;
+    if (until && until < today) continue;
+    if (!best || (best.from ?? "") < from) {
+      best = { reason: (i.reason ?? "").trim() || "Unknown", from, until };
+    }
+  }
+  return best;
+}
+
+/** Highlightly's season label for a season starting in `year`: 2026 -> "26/27". */
+export const seasonLabel = (year: number) =>
+  `${String(year % 100).padStart(2, "0")}/${String((year + 1) % 100).padStart(2, "0")}`;
+
+/** Sums a player's stats across all competitions (and clubs) for one season. */
+export function seasonStatsFrom(
+  perCompetition: HlCompetitionStats[] | null | undefined,
+  season: string,
+): Omit<SeasonStats, "teamGames"> | null {
+  const rows = (perCompetition ?? []).filter((c) => c.season === season);
+  if (rows.length === 0) return null;
+  const sum = (k: keyof HlCompetitionStats) =>
+    rows.reduce((total, r) => total + (typeof r[k] === "number" ? (r[k] as number) : 0), 0);
+  return {
+    season,
+    games: sum("gamesPlayed"),
+    minutes: sum("minutesPlayed"),
+    goals: sum("goals"),
+    assists: sum("assists"),
+    cleanSheets: sum("cleanSheets"),
+  };
+}
+
+export interface DatedBoxScore {
+  /** ISO kickoff time of the match. */
+  date: string;
+  boxScore: HlBoxScoreTeam[];
+}
+
+/**
+ * Splits a team's recent box scores (any order) into the two form windows used for pricing:
+ *  - month: matches in the last 30 days (falls back to the latest 2 if there were none,
+ *    e.g. after an international break);
+ *  - last: the team's most recent match only.
+ */
+export function formWindows(
+  recent: DatedBoxScore[],
+  teamId: number,
+  now = new Date(),
+): { month: Map<number, RecentPlayer>; last: Map<number, RecentPlayer> } {
+  const newestFirst = [...recent].sort((a, b) => b.date.localeCompare(a.date));
+  const cutoff = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+  let inMonth = newestFirst.filter((m) => Date.parse(m.date) >= cutoff);
+  if (inMonth.length === 0) inMonth = newestFirst.slice(0, 2);
+  return {
+    month: recentFormFromBoxScores(
+      inMonth.map((m) => m.boxScore),
+      teamId,
+    ),
+    last: recentFormFromBoxScores(
+      newestFirst.slice(0, 1).map((m) => m.boxScore),
+      teamId,
+    ),
+  };
 }
 
 /** The `n` most recent finished matches, newest first. */

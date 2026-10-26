@@ -11,7 +11,7 @@ const JOB_LABELS: Record<AdminJob, { label: string; hint: string }> = {
   squads: { label: "Sync squads", hint: "≤3 per team, mostly cached" },
   lineups: { label: "Sync line-ups", hint: "1 request, from 40 min before kickoff" },
   stats: { label: "Sync stats + points", hint: "2 requests per finished match" },
-  values: { label: "Update market values", hint: "≤25 requests, keeps 30 spare" },
+  players: { label: "Update players", hint: "Values, injuries, season · ≤20 requests" },
   photos: { label: "Find player photos", hint: "Wikipedia, no API quota" },
   guests: { label: "Delete unused guests", hint: "Older than 2h, never joined" },
   points: { label: "Recalculate points", hint: "No API requests" },
@@ -70,6 +70,9 @@ export interface EditablePlayer {
   priceLocked: boolean;
   photoUrl: string | null;
   photoLocked: boolean;
+  injuryOverride: "fit" | "injured" | null;
+  /** Current injury from the report, e.g. "Injured until 16 Nov · Hamstring injury". */
+  injuryReport: string | null;
   stats: (PlayerMatchStats & { source: "api" | "manual" }) | null;
 }
 
@@ -157,6 +160,35 @@ export function StatsEditor({ matchId, players }: { matchId: number; players: Ed
             <p className="text-xs text-ink-muted">
               Price changes apply to teams picked afterwards; saved teams keep the price they paid.
             </p>
+          </fieldset>
+          <fieldset className="space-y-2 rounded-xl border border-line p-3">
+            <legend className="px-1 text-sm font-semibold">Availability</legend>
+            <p className="text-xs text-ink-muted">
+              Injury report: {player.injuryReport ?? "fit (no current injury)"}
+            </p>
+            <div className="flex items-end gap-2">
+              <label className="flex-1 text-sm">
+                Override
+                <select
+                  name="injuryOverride"
+                  defaultValue={player.injuryOverride ?? ""}
+                  className="min-h-11 w-full rounded-xl border border-line bg-surface px-3"
+                >
+                  <option value="">Follow the injury report</option>
+                  <option value="fit">Force fit (can be picked)</option>
+                  <option value="injured">Force unavailable</option>
+                </select>
+              </label>
+              <Button
+                type="submit"
+                name="intent"
+                value="injury"
+                variant="secondary"
+                disabled={pending}
+              >
+                Save
+              </Button>
+            </div>
           </fieldset>
           <fieldset className="space-y-2 rounded-xl border border-line p-3">
             <legend className="px-1 text-sm font-semibold">Photo</legend>

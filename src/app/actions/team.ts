@@ -44,6 +44,15 @@ export async function saveTeam(input: SaveTeamInput): Promise<FormState> {
   if (picked.some((p) => !p)) {
     return { ok: false, message: "Some players are no longer available. Refresh and try again." };
   }
+  const injured = picked.filter((p) => p!.unavailable);
+  if (injured.length > 0) {
+    return {
+      ok: false,
+      message: `Replace injured players first: ${injured
+        .map((p) => `${p!.name} (${p!.unavailableReason})`)
+        .join(", ")}.`,
+    };
+  }
 
   const result = validateTeam(
     {

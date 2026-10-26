@@ -44,14 +44,54 @@ export function formatValue(v: number) {
   return v >= 1_000_000 ? `€${Math.round(v / 100_000) / 10}m` : `€${Math.round(v / 1000)}k`;
 }
 
+/** Compact line for the picker list: value · season G/A · 30-day rating. */
 function formLine(p: MatchPlayer) {
+  const bits: string[] = [];
+  if (p.marketValue) bits.push(formatValue(p.marketValue));
+  if (p.season && p.season.games > 0) {
+    bits.push(`${p.season.games} games ${p.season.goals}G ${p.season.assists}A`);
+  }
   const f = p.form;
-  const value = p.marketValue ? `${formatValue(p.marketValue)} · ` : "";
-  if (!f || f.matches === 0) return `${value}No recent data`;
-  const bits = [`${value}${f.apps}/${f.matches} apps`];
-  if (f.goals || f.assists) bits.push(`${f.goals}G ${f.assists}A`);
-  if (f.avgRating != null) bits.push(`★ ${f.avgRating.toFixed(1)}`);
-  return bits.join(" · ");
+  if (f && f.matches > 0) {
+    bits.push(
+      `30d ${f.apps}/${f.matches}${f.avgRating != null ? ` ★${f.avgRating.toFixed(1)}` : ""}`,
+    );
+  }
+  return bits.length ? bits.join(" · ") : "No recent data";
+}
+
+/** Detailed stat rows for the player card. */
+function statRows(p: MatchPlayer): [string, string][] {
+  const rows: [string, string][] = [];
+  if (p.marketValue) rows.push(["Market value", formatValue(p.marketValue)]);
+  const s = p.season;
+  if (s && s.games > 0) {
+    const cs =
+      p.position === "GK" || p.position === "DEF" ? ` · ${s.cleanSheets} clean sheets` : "";
+    rows.push([
+      `Season ${s.season}`,
+      `${s.games} games · ${s.minutes}' · ${s.goals}G ${s.assists}A${cs}`,
+    ]);
+  }
+  const f = p.form;
+  if (f && f.matches > 0) {
+    rows.push([
+      "Last 30 days",
+      `${f.apps}/${f.matches} apps · ${f.minutes}' · ${f.goals}G ${f.assists}A${
+        f.avgRating != null ? ` · ★${f.avgRating.toFixed(1)}` : ""
+      }`,
+    ]);
+  }
+  const l = p.lastMatch;
+  if (l && l.matches > 0) {
+    rows.push([
+      "Last match",
+      l.apps > 0
+        ? `${l.minutes}' · ${l.goals}G ${l.assists}A${l.avgRating != null ? ` · ★${l.avgRating.toFixed(1)}` : ""}`
+        : "Didn't play",
+    ]);
+  }
+  return rows;
 }
 
 export function TeamBuilder({ matchId, barcaTeamId, opponentName, players, initial }: Props) {
@@ -99,6 +139,8 @@ export function TeamBuilder({ matchId, barcaTeamId, opponentName, players, initi
     },
     { allowedTeamIds },
   );
+  const injuredPicked = picked.filter((p) => p.unavailable);
+  const canSave = validation.valid && injuredPicked.length === 0;
 
   const changed = () => setNotice(null);
 
@@ -171,6 +213,7 @@ export function TeamBuilder({ matchId, barcaTeamId, opponentName, players, initi
           );
         }
         const role = captainId === p.id ? "C" : viceCaptainId === p.id ? "VC" : null;
+        const injured = p.unavailable;
         return (
           <button
             key={`${pos}-${index}`}
@@ -180,7 +223,20 @@ export function TeamBuilder({ matchId, barcaTeamId, opponentName, players, initi
             aria-label={`${p.name}${role ? ` (${role === "C" ? "captain" : "vice-captain"})` : ""}`}
           >
             <span className="relative">
-              <PlayerAvatar name={p.name} photoUrl={p.photoUrl} barca={p.teamId === barcaTeamId} />
+              <PlayerAvatar
+                name={p.name}
+                photoUrl={p.photoUrl}
+                barca={p.teamId === barcaTeamId}
+                className={injured ? "opacity-60 ring-red-500" : undefined}
+              />
+              {injured && (
+                <span
+                  className="absolute -bottom-1 -left-2 flex size-5 items-center justify-center rounded-full bg-red-600 text-[11px] font-black text-white ring-1 ring-white"
+                  aria-label="Injured"
+                >
+                  !
+                </span>
+              )}
               {role && (
                 <span className="absolute -top-1 -right-2 rounded-full bg-gold-400 px-1 text-[10px] font-black text-blaugrana-950 ring-1 ring-white">
                   {role}
@@ -271,11 +327,22 @@ export function TeamBuilder({ matchId, barcaTeamId, opponentName, players, initi
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 p-3 backdrop-blur">
         <div className="mx-auto max-w-2xl space-y-2">
           {notice && <Notice tone={notice.ok ? "success" : "error"}>{notice.message}</Notice>}
-          {!notice && !validation.valid && selectedIds.length > 0 && (
+          {!notice && injuredPicked.length > 0 && (
+            <p className="text-xs font-semibold text-red-500">
+              Replace injured: {injuredPicked.map((p) => p.name).join(", ")}
+            </p>
+          )}
+          {!notice && injuredPicked.length === 0 && !validation.valid && selectedIds.length > 0 && (
             <p className="text-xs text-ink-muted">{validation.errors[0]?.message}</p>
           )}
-          <Button className="w-full" onClick={save} disabled={!validation.valid || pending}>
-            {pending ? "Saving…" : validation.valid ? "Save team" : "Complete your XI to save"}
+          <Button className="w-full" onClick={save} disabled={!canSave || pending}>
+            {pending
+              ? "Saving…"
+              : canSave
+                ? "Save team"
+                : injuredPicked.length > 0
+                  ? "Replace injured players to save"
+                  : "Complete your XI to save"}
           </Button>
         </div>
       </div>
@@ -331,7 +398,6 @@ function PlayerSheet(props: {
               {p.position} · {p.teamId === barcaTeamId ? "Barça" : p.teamName} ·{" "}
               {p.price.toFixed(1)}
             </p>
-            <p className="text-xs text-ink-muted">{formLine(p)}</p>
             {p.photoUrl && p.photoCredit && (
               <p className="text-[11px] text-ink-muted">
                 Photo:{" "}
@@ -346,6 +412,24 @@ function PlayerSheet(props: {
             )}
           </div>
         </div>
+        {p.unavailable && (
+          <p
+            role="alert"
+            className="rounded-xl border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-500"
+          >
+            {p.unavailableReason} — replace this player before saving.
+          </p>
+        )}
+        {statRows(p).length > 0 && (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-xl bg-surface-raised p-3 text-xs">
+            {statRows(p).map(([label, value]) => (
+              <div key={label} className="contents">
+                <dt className="text-ink-muted">{label}</dt>
+                <dd className="font-medium">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant={props.captainId === p.id ? "primary" : "ghost"}
@@ -425,7 +509,7 @@ function PlayerSheet(props: {
             const teamFull =
               (props.countsByTeam[p.teamId] ?? 0) - freedSlot >= TEAM_RULES.maxPerTeam;
             const tooExpensive = p.price > props.remainingBudget + (replacing?.price ?? 0);
-            const disabled = inXi || teamFull;
+            const disabled = inXi || teamFull || p.unavailable;
             const tag = LINEUP_TAG[p.lineupStatus];
             return (
               <li key={p.id}>
@@ -450,8 +534,13 @@ function PlayerSheet(props: {
                           {tag}
                         </Badge>
                       )}
+                      {p.unavailable && (
+                        <span className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                          {p.unavailableReason}
+                        </span>
+                      )}
                       {inXi && <Badge tone="blue">In XI</Badge>}
-                      {!inXi && teamFull && (
+                      {!inXi && !p.unavailable && teamFull && (
                         <Badge tone="neutral">Max {TEAM_RULES.maxPerTeam}</Badge>
                       )}
                     </span>

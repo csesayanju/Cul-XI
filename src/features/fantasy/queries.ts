@@ -2,7 +2,8 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { EMPTY_FORM, type PlayerForm } from "./pricing";
+import { injuryLabel, isUnavailable, type Injury, type InjuryOverride } from "./availability";
+import { EMPTY_FORM, type PlayerForm, type SeasonStats } from "./pricing";
 import type { Competition, Position } from "./types";
 
 /** Read helpers used by pages. They run with the user's client, so RLS applies. */
@@ -69,16 +70,25 @@ export interface MatchPlayer {
   /** Latest market value in euros, if known. */
   marketValue: number | null;
   priceLocked: boolean;
+  season: SeasonStats | null;
+  lastMatch: PlayerForm | null;
+  injury: Injury | null;
+  injuryOverride: InjuryOverride;
+  /** Can't be picked (injured per the report, or marked unavailable by an admin). */
+  unavailable: boolean;
+  /** e.g. "Injured until 16 Nov · Hamstring injury" when unavailable. */
+  unavailableReason: string | null;
 }
 
 export async function listMatchPlayers(
   db: SupabaseClient,
   matchId: number,
+  now = new Date(),
 ): Promise<MatchPlayer[]> {
   const { data } = await db
     .from("match_players")
     .select(
-      "lineup_status, players(id, name, position, team_api_id, team_name, price, shirt_number, photo_url, photo_credit, photo_page_url, photo_locked, form, market_value, price_locked)",
+      "lineup_status, players(id, name, position, team_api_id, team_name, price, shirt_number, photo_url, photo_credit, photo_page_url, photo_locked, form, market_value, price_locked, season_stats, last_match, injury, injury_override)",
     )
     .eq("match_id", matchId)
     .eq("is_available", true);
@@ -100,6 +110,10 @@ export async function listMatchPlayers(
       form: Partial<PlayerForm> | null;
       market_value: number | null;
       price_locked: boolean;
+      season_stats: SeasonStats | null;
+      last_match: PlayerForm | null;
+      injury: Injury | null;
+      injury_override: InjuryOverride;
     } | null;
   };
 
@@ -122,6 +136,14 @@ export async function listMatchPlayers(
         typeof p!.form?.matches === "number" ? ({ ...EMPTY_FORM, ...p!.form } as PlayerForm) : null,
       marketValue: p!.market_value == null ? null : Number(p!.market_value),
       priceLocked: p!.price_locked,
+      season: p!.season_stats,
+      lastMatch: p!.last_match,
+      injury: p!.injury,
+      injuryOverride: p!.injury_override,
+      unavailable: isUnavailable(p!.injury, p!.injury_override, now),
+      unavailableReason: isUnavailable(p!.injury, p!.injury_override, now)
+        ? injuryLabel(p!.injury, p!.injury_override)
+        : null,
     }))
     .sort((a, b) => b.price - a.price || a.name.localeCompare(b.name));
 }

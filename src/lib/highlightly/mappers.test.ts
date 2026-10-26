@@ -8,8 +8,12 @@ import matchesSample from "./__fixtures__/matches.json";
 import {
   competitionFor,
   hasLineups,
+  currentInjury,
+  formWindows,
   isFinished,
   latestMarketValue,
+  seasonLabel,
+  seasonStatsFrom,
   mapBoxScore,
   mapLineups,
   mapMatchDetail,
@@ -229,6 +233,109 @@ describe("recentFormFromBoxScores", () => {
     const form = recentFormFromBoxScores([withPhoto("new.png"), withPhoto("old.png")], BARCA);
     expect(form.get(2200000001)!.photoUrl).toBe("new.png");
     expect(recentFormFromBoxScores([box], BARCA).get(2200000001)!.photoUrl).toBeNull();
+  });
+});
+
+describe("currentInjury", () => {
+  const now = new Date("2026-10-26T12:00:00Z");
+
+  it("returns the injury that is ongoing today", () => {
+    expect(
+      currentInjury(
+        [
+          { reason: "Hamstring injury", fromDate: "21.06.2026", toDate: "03.07.2026" },
+          { reason: "Torn muscle fiber", fromDate: "21.10.2026", toDate: "16.11.2026" },
+        ],
+        now,
+      ),
+    ).toEqual({ reason: "Torn muscle fiber", from: "2026-10-21", until: "2026-11-16" });
+  });
+
+  it("treats a missing return date as ongoing, and past/future injuries as not current", () => {
+    expect(
+      currentInjury([{ reason: "Knee", fromDate: "01.10.2026", toDate: null }], now)?.until,
+    ).toBeNull();
+    expect(
+      currentInjury([{ reason: "Old", fromDate: "01.01.2026", toDate: "01.02.2026" }], now),
+    ).toBeNull();
+    expect(
+      currentInjury([{ reason: "Later", fromDate: "01.12.2026", toDate: null }], now),
+    ).toBeNull();
+    expect(currentInjury(undefined, now)).toBeNull();
+  });
+});
+
+describe("season stats", () => {
+  it("labels seasons like Highlightly", () => {
+    expect(seasonLabel(2026)).toBe("26/27");
+    expect(seasonLabel(2099)).toBe("99/00");
+  });
+
+  it("sums all competitions for the season and ignores other seasons", () => {
+    const row = (
+      league: string,
+      season: string,
+      g: number,
+      m: number,
+      gl: number,
+      a: number,
+      cs: number,
+    ) => ({
+      club: "FC Barcelona",
+      league,
+      season,
+      gamesPlayed: g,
+      minutesPlayed: m,
+      goals: gl,
+      assists: a,
+      cleanSheets: cs,
+    });
+    const rows = [
+      row("LaLiga", "26/27", 9, 741, 8, 6, 3),
+      row("UEFA Champions League", "26/27", 2, 180, 1, 4, 0),
+      row("LaLiga", "25/26", 28, 2270, 16, 12, 7),
+    ];
+    expect(seasonStatsFrom(rows, "26/27")).toEqual({
+      season: "26/27",
+      games: 11,
+      minutes: 921,
+      goals: 9,
+      assists: 10,
+      cleanSheets: 3,
+    });
+    expect(seasonStatsFrom(rows, "27/28")).toBeNull();
+  });
+});
+
+describe("formWindows", () => {
+  const box = boxScoreSample as HlBoxScoreTeam[];
+  const now = new Date("2026-10-26T12:00:00Z");
+
+  it("splits recent matches into last-30-days and last-match windows", () => {
+    const { month, last } = formWindows(
+      [
+        { date: "2026-08-01T19:00:00Z", boxScore: box }, // more than 30 days ago
+        { date: "2026-10-18T19:00:00Z", boxScore: box },
+        { date: "2026-10-25T19:00:00Z", boxScore: box },
+      ],
+      BARCA,
+      now,
+    );
+    expect(month.get(2200000013)!.form).toMatchObject({ matches: 2, apps: 2, goals: 2 });
+    expect(last.get(2200000013)!.form).toMatchObject({ matches: 1, apps: 1, goals: 1 });
+  });
+
+  it("falls back to the latest 2 matches when none were in the last 30 days", () => {
+    const { month } = formWindows(
+      [
+        { date: "2026-07-01T19:00:00Z", boxScore: box },
+        { date: "2026-07-08T19:00:00Z", boxScore: box },
+        { date: "2026-06-01T19:00:00Z", boxScore: box },
+      ],
+      BARCA,
+      now,
+    );
+    expect(month.get(2200000013)!.form.matches).toBe(2);
   });
 });
 

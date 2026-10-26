@@ -164,10 +164,42 @@ export interface HlMarketValue {
   club?: string | null;
 }
 
+export interface HlInjury {
+  reason: string | null;
+  /** "dd.mm.yyyy" */
+  fromDate: string | null;
+  /** "dd.mm.yyyy" (expected return); may be missing for open-ended injuries. */
+  toDate: string | null;
+  season?: string | null;
+  missedGames?: number | null;
+}
+
 export interface HlPlayerDetail {
   id: number;
   name: string;
   marketValue?: HlMarketValue[] | null;
+  injuries?: HlInjury[] | null;
+}
+
+// --- GET /players/{id}/statistics (returns a one-item array) ----------------
+export interface HlCompetitionStats {
+  club: string | null;
+  league: string | null;
+  /** e.g. "26/27" */
+  season: string | null;
+  gamesPlayed: number | null;
+  minutesPlayed: number | null;
+  goals: number | null;
+  assists: number | null;
+  cleanSheets: number | null;
+  yellowCards?: number | null;
+  redCards?: number | null;
+}
+
+export interface HlPlayerStatistics {
+  id: number;
+  name: string;
+  perCompetition?: HlCompetitionStats[] | null;
 }
 
 // --- GET /teams, /leagues ----------------------------------------------------

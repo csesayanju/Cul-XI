@@ -1,13 +1,14 @@
 import "server-only";
 
 import {
+  formWindows,
   hasLineups,
   playerPoolFromLineups,
   recentFinished,
-  recentFormFromBoxScores,
+  type DatedBoxScore,
   type PlayerRow,
 } from "@/lib/highlightly/mappers";
-import type { HlBoxScoreTeam, HlLineups } from "@/lib/highlightly/types";
+import type { HlLineups } from "@/lib/highlightly/types";
 
 import {
   check,
@@ -28,7 +29,7 @@ const RECENT_MATCHES = 5;
  * Cost: 1 request (last five games, cached 1 day) + 2 per new finished match (line-ups +
  * box score, cached forever). Highlightly has no squad endpoint.
  */
-async function teamPool({ api }: SyncContext, teamId: number): Promise<PlayerRow[]> {
+async function teamPool({ api, now }: SyncContext, teamId: number): Promise<PlayerRow[]> {
   const { data: lastFive } = await api.lastFiveGames(teamId, {
     maxAgeMs: DAY,
     shouldCache: (d) => d.length > 0,
@@ -36,22 +37,20 @@ async function teamPool({ api }: SyncContext, teamId: number): Promise<PlayerRow
   const recent = recentFinished(lastFive, RECENT_MATCHES);
 
   const lineups: HlLineups[] = [];
-  const boxScores: HlBoxScoreTeam[][] = [];
+  const boxScores: DatedBoxScore[] = [];
   for (const m of recent) {
     const { data: l } = await api.lineups(m.id, { shouldCache: hasLineups });
     if (hasLineups(l)) lineups.push(l);
     const { data: b } = await api.boxScore(m.id, {
       shouldCache: (d) => d.some((t) => t.players.length > 0),
     });
-    if (b.some((t) => t.players.length > 0)) boxScores.push(b);
+    if (b.some((t) => t.players.length > 0)) boxScores.push({ date: m.date, boxScore: b });
   }
 
-  return playerPoolFromLineups(
-    lineups,
-    teamId,
-    recentFormFromBoxScores(boxScores, teamId),
-    boxScores.length,
-  );
+  // Pool from all recent line-ups; prices from the last-30-days and last-match windows.
+  const { month, last } = formWindows(boxScores, teamId, now);
+  const monthMatches = [...month.values()][0]?.form.matches ?? 0;
+  return playerPoolFromLineups(lineups, teamId, month, monthMatches, last);
 }
 
 /**

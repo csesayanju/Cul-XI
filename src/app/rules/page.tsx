@@ -169,12 +169,26 @@ export default function RulesPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-bold">Player prices</h2>
         <Card className="space-y-3 text-sm">
+          <p>Prices work like Dream11: most players cost 7.5–11 credits. Each price blends:</p>
+          <ul className="list-disc space-y-1 pl-5">
+            <li>
+              <b>50% status</b> — the player&apos;s market value, so stars stay expensive through a
+              quiet patch;
+            </li>
+            <li>
+              <b>25% this season</b> — share of minutes, goals and assists per game, clean sheets;
+            </li>
+            <li>
+              <b>15% last 30 days</b> — minutes, match ratings, goals and assists;
+            </li>
+            <li>
+              <b>10% last match</b>.
+            </li>
+          </ul>
           <p>
-            Prices work like Dream11: most players cost 7.5–11 credits. About two-thirds of a price
-            is the player&apos;s <b>status</b> (their market value), so stars stay expensive even
-            through a quiet patch. The rest is <b>recent form</b> over their last 5 matches —
-            minutes, match ratings, goals and assists — so a hot streak still pushes a price up.
-            Prices are updated every day.
+            Prices update every day. <b>Injured players can&apos;t be picked</b>: they show as
+            &ldquo;Injured until …&rdquo;, and if one is already in your team you&apos;ll need to
+            replace them before saving.
           </p>
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {POSITIONS.map((p) => (

@@ -3,12 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { EMPTY_FORM, priceFor, type PlayerForm } from "@/features/fantasy/pricing";
+import {
+  EMPTY_FORM,
+  priceFor,
+  type PlayerForm,
+  type SeasonStats,
+} from "@/features/fantasy/pricing";
 import { createSyncContext, type SyncResult } from "@/features/fantasy/sync/context";
 import { recalculatePoints } from "@/features/fantasy/sync/recalculate-points";
 import { syncFixtures } from "@/features/fantasy/sync/sync-fixtures";
 import { syncPhotos } from "@/features/fantasy/sync/sync-photos";
-import { syncValues } from "@/features/fantasy/sync/sync-values";
+import { syncProfiles } from "@/features/fantasy/sync/sync-profiles";
 import { syncLineups } from "@/features/fantasy/sync/sync-lineups";
 import { syncSquads } from "@/features/fantasy/sync/sync-squads";
 import { syncStats } from "@/features/fantasy/sync/sync-stats";
@@ -31,7 +36,7 @@ const JOBS = {
   lineups: (matchId?: number) => syncLineups(createSyncContext(), { matchId }),
   stats: (matchId?: number) => syncStats(createSyncContext(), { matchId }),
   photos: (matchId?: number) => syncPhotos(createSyncContext(), { matchId }),
-  values: () => syncValues(createSyncContext()),
+  players: () => syncProfiles(createSyncContext()),
   guests: () => cleanupGuests(createSyncContext().db),
   points: async (matchId?: number): Promise<SyncResult> => {
     if (!matchId) return { ok: false, message: "Choose a match to recalculate." };
@@ -146,6 +151,26 @@ export async function saveManualStats(
       };
     }
 
+    if (fields.intent === "injury") {
+      const value = String(fields.injuryOverride ?? "");
+      const override = value === "fit" || value === "injured" ? value : null;
+      const { error } = await supabase
+        .from("players")
+        .update({ injury_override: override })
+        .eq("id", playerId);
+      if (error) return { ok: false, message: `Not saved: ${error.message}` };
+      revalidatePath("/", "layout");
+      return {
+        ok: true,
+        message:
+          override === "fit"
+            ? "Marked fit: the player can be picked, whatever the injury report says."
+            : override === "injured"
+              ? "Marked unavailable: the player can't be picked."
+              : "Back to following the injury report.",
+      };
+    }
+
     if (fields.intent === "price") {
       const parsed = priceSchema.safeParse(fields);
       if (!parsed.success) return firstIssue(parsed.error);
@@ -157,12 +182,19 @@ export async function saveManualStats(
       } else {
         const { data: player, error } = await supabase
           .from("players")
-          .select("position, form")
+          .select("position, form, last_match, season_stats, market_value")
           .eq("id", playerId)
           .single();
         if (error || !player) return { ok: false, message: "Player not found." };
-        const form = { ...EMPTY_FORM, ...(player.form as Partial<PlayerForm>) };
-        update = { price: priceFor(player.position as Position, form), price_locked: false };
+        update = {
+          price: priceFor(player.position as Position, {
+            form: { ...EMPTY_FORM, ...(player.form as Partial<PlayerForm>) },
+            last: player.last_match as PlayerForm | null,
+            season: player.season_stats as SeasonStats | null,
+            marketValue: player.market_value == null ? null : Number(player.market_value),
+          }),
+          price_locked: false,
+        };
       }
       const { error } = await supabase.from("players").update(update).eq("id", playerId);
       if (error) return { ok: false, message: `Price not saved: ${error.message}` };
@@ -171,7 +203,7 @@ export async function saveManualStats(
         ok: true,
         message: update.price_locked
           ? `Price locked at ${update.price}.`
-          : `Back to automatic pricing: ${update.price} from recent form.`,
+          : `Back to automatic pricing: ${update.price}.`,
       };
     }
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { Card, Notice, PageTitle } from "@/components/ui";
+import { injuryLabel } from "@/features/fantasy/availability";
 import { listMatchPlayers } from "@/features/fantasy/queries";
 import { toStats } from "@/features/fantasy/sync/recalculate-points";
 import { requireAdmin } from "@/lib/auth";
@@ -49,6 +50,8 @@ export default async function AdminPage({
           priceLocked: p.priceLocked,
           photoUrl: p.photoUrl,
           photoLocked: p.photoLocked,
+          injuryOverride: p.injuryOverride,
+          injuryReport: p.injury ? injuryLabel(p.injury) : null,
           stats: row ? { ...toStats(row), source: row.source as "api" | "manual" } : null,
         };
       })

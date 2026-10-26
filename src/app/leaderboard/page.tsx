@@ -48,7 +48,17 @@ export default async function LeaderboardPage({
   const { match } = await searchParams;
   const supabase = await createClient();
 
-  const league = await getMyLeague(supabase, user.id);
+  // One parallel round: RLS already limits points to you and your league-mates, and
+  // buildStandings ignores anyone outside the league.
+  const [league, { data: points }, { data: scoredMatches }] = await Promise.all([
+    getMyLeague(supabase, user.id),
+    supabase.from("fantasy_points").select("user_id, match_id, total_points"),
+    supabase
+      .from("matches")
+      .select("id, opponent_name, kickoff_at")
+      .not("points_calculated_at", "is", null)
+      .order("kickoff_at", { ascending: false }),
+  ]);
   if (!league) {
     return (
       <>
@@ -63,18 +73,6 @@ export default async function LeaderboardPage({
       </>
     );
   }
-
-  const [{ data: points }, { data: scoredMatches }] = await Promise.all([
-    supabase
-      .from("fantasy_points")
-      .select("user_id, match_id, total_points")
-      .in("user_id", [...league.members.keys()]),
-    supabase
-      .from("matches")
-      .select("id, opponent_name, kickoff_at")
-      .not("points_calculated_at", "is", null)
-      .order("kickoff_at", { ascending: false }),
-  ]);
 
   const rows = (points ?? []).map((p) => ({
     userId: p.user_id as string,

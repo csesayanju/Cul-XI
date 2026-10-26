@@ -25,10 +25,9 @@ export default async function PickPage({ params }: { params: Promise<{ id: strin
 
   const user = await requireUser();
   const supabase = await createClient();
-  const match = await getMatch(supabase, matchId);
-  if (!match) notFound();
-
-  const [players, team, points] = await Promise.all([
+  // One parallel round of queries (the match isn't needed to start the others).
+  const [match, players, team, points] = await Promise.all([
+    getMatch(supabase, matchId),
     listMatchPlayers(supabase, matchId),
     getMyTeam(supabase, user.id, matchId),
     supabase
@@ -38,6 +37,7 @@ export default async function PickPage({ params }: { params: Promise<{ id: strin
       .eq("match_id", matchId)
       .maybeSingle(),
   ]);
+  if (!match) notFound();
 
   const barcaTeamId = serverEnv().BARCA_TEAM_ID;
   const started = hasKickedOff(match.kickoff_at);

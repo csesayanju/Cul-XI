@@ -1,56 +1,218 @@
 [
   {
-    "team": { "id": 1100000529, "name": "Barcelona", "logo": "https://example.invalid/t/529.png" },
+    "team": {
+      "id": 1100000529,
+      "name": "Barcelona",
+      "logo": "https://example.invalid/t/529.png"
+    },
     "players": [
       {
-        "id": 2200000001, "name": "M. Ferrer", "fullName": "Marc Ferrer", "logo": "", "matchRating": "7.10",
-        "shirtNumber": 1, "isCaptain": false, "position": "Goalkeeper", "minutesPlayed": 90, "isSubstitute": false, "offsides": 0,
-        "statistics": [{ "goalsScored": 0, "goalsSaved": 4, "goalsConceded": 1, "assists": 0, "cardsRed": 0, "cardsYellow": 0, "cardsSecondYellow": 0, "penaltiesMissed": 0, "penaltiesScored": 0, "penaltiesTotal": 0 }]
+        "id": 2200000001,
+        "name": "M. Ferrer",
+        "fullName": "Marc Ferrer",
+        "logo": "",
+        "matchRating": "7.10",
+        "shirtNumber": 1,
+        "isCaptain": false,
+        "position": "Goalkeeper",
+        "minutesPlayed": 90,
+        "isSubstitute": false,
+        "offsides": 0,
+        "statistics": {
+          "goalsScored": 0,
+          "goalsSaved": 4,
+          "goalsConceded": 1,
+          "assists": 0,
+          "cardsRed": 0,
+          "cardsYellow": 0,
+          "cardsSecondYellow": 0,
+          "penaltiesMissed": 0,
+          "penaltiesScored": 0,
+          "penaltiesTotal": 0
+        }
       },
       {
-        "id": 2200000004, "name": "À. Serra", "fullName": "Àlex Serra", "logo": "", "matchRating": "6.20",
-        "shirtNumber": 3, "isCaptain": false, "position": "Defender", "minutesPlayed": 90, "isSubstitute": false, "offsides": 0,
-        "statistics": [{ "goalsScored": 0, "goalsSaved": 0, "goalsConceded": 0, "assists": 0, "cardsRed": 0, "cardsYellow": 1, "cardsSecondYellow": 0, "penaltiesMissed": 0 }]
+        "id": 2200000004,
+        "name": "À. Serra",
+        "fullName": "Àlex Serra",
+        "logo": "",
+        "matchRating": "6.20",
+        "shirtNumber": 3,
+        "isCaptain": false,
+        "position": "Defender",
+        "minutesPlayed": 90,
+        "isSubstitute": false,
+        "offsides": 0,
+        "statistics": {
+          "goalsScored": 0,
+          "goalsSaved": 0,
+          "goalsConceded": 0,
+          "assists": 0,
+          "cardsRed": 0,
+          "cardsYellow": 1,
+          "cardsSecondYellow": 0,
+          "penaltiesMissed": 0
+        }
       },
       {
-        "id": 2200000005, "name": "O. Roca", "fullName": "Oriol Roca", "logo": "", "matchRating": "7.00",
-        "shirtNumber": 4, "isCaptain": false, "position": "Defender", "minutesPlayed": 90, "isSubstitute": false, "offsides": 0,
-        "statistics": [{ "goalsScored": 0, "assists": 1, "cardsRed": 0, "cardsYellow": 0 }]
+        "id": 2200000005,
+        "name": "O. Roca",
+        "fullName": "Oriol Roca",
+        "logo": "",
+        "matchRating": "7.00",
+        "shirtNumber": 4,
+        "isCaptain": false,
+        "position": "Defender",
+        "minutesPlayed": 90,
+        "isSubstitute": false,
+        "offsides": 0,
+        "statistics": {
+          "goalsScored": 0,
+          "assists": 1,
+          "cardsRed": 0,
+          "cardsYellow": 0
+        }
       },
       {
-        "id": 2200000008, "name": "A. Font", "fullName": "Arnau Font", "logo": "", "matchRating": "8.40",
-        "shirtNumber": 8, "isCaptain": true, "position": "Midfielder", "minutesPlayed": 90, "isSubstitute": false, "offsides": 0,
-        "statistics": [{ "goalsScored": 1, "goalsSaved": 0, "goalsConceded": 0, "assists": 0, "cardsRed": 0, "cardsYellow": 0, "cardsSecondYellow": 0, "penaltiesMissed": 0 }]
+        "id": 2200000008,
+        "name": "A. Font",
+        "fullName": "Arnau Font",
+        "logo": "",
+        "matchRating": "8.40",
+        "shirtNumber": 8,
+        "isCaptain": true,
+        "position": "Midfielder",
+        "minutesPlayed": 90,
+        "isSubstitute": false,
+        "offsides": 0,
+        "statistics": {
+          "goalsScored": 1,
+          "goalsSaved": 0,
+          "goalsConceded": 0,
+          "assists": 0,
+          "cardsRed": 0,
+          "cardsYellow": 0,
+          "cardsSecondYellow": 0,
+          "penaltiesMissed": 0
+        }
       },
       {
-        "id": 2200000013, "name": "I. Sala", "fullName": "Iker Sala", "logo": "", "matchRating": "7.60",
-        "shirtNumber": 9, "isCaptain": false, "position": "Forward", "minutesPlayed": 90, "isSubstitute": false, "offsides": 2,
-        "statistics": [{ "goalsScored": 1, "goalsSaved": 0, "goalsConceded": 0, "assists": 0, "cardsRed": 0, "cardsYellow": 0, "cardsSecondYellow": 0, "penaltiesMissed": 1, "penaltiesTotal": 1 }]
+        "id": 2200000013,
+        "name": "I. Sala",
+        "fullName": "Iker Sala",
+        "logo": "",
+        "matchRating": "7.60",
+        "shirtNumber": 9,
+        "isCaptain": false,
+        "position": "Forward",
+        "minutesPlayed": 90,
+        "isSubstitute": false,
+        "offsides": 2,
+        "statistics": [
+          {
+            "goalsScored": 1,
+            "goalsSaved": 0,
+            "goalsConceded": 0,
+            "assists": 0,
+            "cardsRed": 0,
+            "cardsYellow": 0,
+            "cardsSecondYellow": 0,
+            "penaltiesMissed": 1,
+            "penaltiesTotal": 1
+          }
+        ]
       },
       {
-        "id": 2200000011, "name": "Q. Bosch", "fullName": "Quim Bosch", "logo": "", "matchRating": null,
-        "shirtNumber": 20, "isCaptain": false, "position": "Midfielder", "minutesPlayed": 0, "isSubstitute": true, "offsides": 0,
-        "statistics": []
+        "id": 2200000011,
+        "name": "Q. Bosch",
+        "fullName": "Quim Bosch",
+        "logo": "",
+        "matchRating": null,
+        "shirtNumber": 20,
+        "isCaptain": false,
+        "position": "Midfielder",
+        "minutesPlayed": 0,
+        "isSubstitute": true,
+        "offsides": 0,
+        "statistics": {}
       }
     ]
   },
   {
-    "team": { "id": 1100009001, "name": "Real Ficticio", "logo": "https://example.invalid/t/9001.png" },
+    "team": {
+      "id": 1100009001,
+      "name": "Real Ficticio",
+      "logo": "https://example.invalid/t/9001.png"
+    },
     "players": [
       {
-        "id": 2210000001, "name": "D. Ruiz", "fullName": "Diego Ruiz", "logo": "", "matchRating": "7.00",
-        "shirtNumber": 1, "isCaptain": false, "position": "Goalkeeper", "minutesPlayed": 90, "isSubstitute": false, "offsides": 0,
-        "statistics": [{ "goalsScored": 0, "goalsSaved": 5, "goalsConceded": 2, "assists": 0, "cardsRed": 0, "cardsYellow": 0, "cardsSecondYellow": 0, "penaltiesMissed": 0 }]
+        "id": 2210000001,
+        "name": "D. Ruiz",
+        "fullName": "Diego Ruiz",
+        "logo": "",
+        "matchRating": "7.00",
+        "shirtNumber": 1,
+        "isCaptain": false,
+        "position": "Goalkeeper",
+        "minutesPlayed": 90,
+        "isSubstitute": false,
+        "offsides": 0,
+        "statistics": {
+          "goalsScored": 0,
+          "goalsSaved": 5,
+          "goalsConceded": 2,
+          "assists": 0,
+          "cardsRed": 0,
+          "cardsYellow": 0,
+          "cardsSecondYellow": 0,
+          "penaltiesMissed": 0
+        }
       },
       {
-        "id": 2210000006, "name": "L. Romero", "fullName": "Luis Romero", "logo": "", "matchRating": "5.90",
-        "shirtNumber": 3, "isCaptain": false, "position": "Defender", "minutesPlayed": 64, "isSubstitute": false, "offsides": 0,
-        "statistics": [{ "goalsScored": 0, "goalsSaved": 0, "goalsConceded": 0, "assists": 0, "cardsRed": 0, "cardsYellow": 1, "cardsSecondYellow": 1, "penaltiesMissed": 0 }]
+        "id": 2210000006,
+        "name": "L. Romero",
+        "fullName": "Luis Romero",
+        "logo": "",
+        "matchRating": "5.90",
+        "shirtNumber": 3,
+        "isCaptain": false,
+        "position": "Defender",
+        "minutesPlayed": 64,
+        "isSubstitute": false,
+        "offsides": 0,
+        "statistics": {
+          "goalsScored": 0,
+          "goalsSaved": 0,
+          "goalsConceded": 0,
+          "assists": 0,
+          "cardsRed": 0,
+          "cardsYellow": 1,
+          "cardsSecondYellow": 1,
+          "penaltiesMissed": 0
+        }
       },
       {
-        "id": 2210000013, "name": "Á. Cano", "fullName": "Álvaro Cano", "logo": "", "matchRating": "6.80",
-        "shirtNumber": 9, "isCaptain": true, "position": "Forward", "minutesPlayed": 90, "isSubstitute": false, "offsides": 1,
-        "statistics": [{ "goalsScored": 0, "goalsSaved": 0, "goalsConceded": 0, "assists": 0, "cardsRed": 0, "cardsYellow": 0, "cardsSecondYellow": 0, "penaltiesMissed": 0 }]
+        "id": 2210000013,
+        "name": "Á. Cano",
+        "fullName": "Álvaro Cano",
+        "logo": "",
+        "matchRating": "6.80",
+        "shirtNumber": 9,
+        "isCaptain": true,
+        "position": "Forward",
+        "minutesPlayed": 90,
+        "isSubstitute": false,
+        "offsides": 1,
+        "statistics": {
+          "goalsScored": 0,
+          "goalsSaved": 0,
+          "goalsConceded": 0,
+          "assists": 0,
+          "cardsRed": 0,
+          "cardsYellow": 0,
+          "cardsSecondYellow": 0,
+          "penaltiesMissed": 0
+        }
       }
     ]
   }

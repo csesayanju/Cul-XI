@@ -1,6 +1,9 @@
+import { EMPTY_FORM, type PlayerForm } from "@/features/fantasy/pricing";
 import type { Competition, PlayerMatchStats, Position } from "@/features/fantasy/types";
 
 import type {
+  HlBoxScorePlayer,
+  HlBoxScoreStatistics,
   HlBoxScoreTeam,
   HlEvent,
   HlLineupPlayer,
@@ -142,9 +145,13 @@ export interface PlayerRow {
   team_name: string;
   position: Position;
   shirt_number: number | null;
+  /** Only set when known; never overwrites a stored photo with null. */
+  photo_url?: string | null;
+  /** Recent form, set by the squad sync; drives automatic pricing. */
+  form?: PlayerForm;
 }
 
-export interface LineupEntry extends Omit<PlayerRow, "position"> {
+export interface LineupEntry extends Omit<PlayerRow, "position" | "photo_url" | "form"> {
   position: Position | null;
   lineup_status: "starting" | "bench";
 }
@@ -186,22 +193,130 @@ export const toPlayerRow = (e: LineupEntry | PlayerRow): PlayerRow => ({
   team_name: e.team_name,
   position: e.position ?? "MID",
   shirt_number: e.shirt_number,
+  ...("photo_url" in e && e.photo_url ? { photo_url: e.photo_url } : {}),
+  ...("form" in e && e.form ? { form: e.form } : {}),
 });
+
+/** Box-score stats come back as an object from the live API but an array in the spec: accept both. */
+export function boxStats(p: HlBoxScorePlayer): HlBoxScoreStatistics {
+  const s = p.statistics;
+  return (Array.isArray(s) ? s[0] : s) ?? {};
+}
+
+const parseRating = (r: string | null | undefined): number | null => {
+  const n = r == null ? NaN : Number.parseFloat(r);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+export interface RecentPlayer {
+  form: PlayerForm;
+  photoUrl: string | null;
+  name: string;
+  position: Position | null;
+  shirtNumber: number | null;
+}
+
+/**
+ * Summarises one team's players over its recent box scores (newest first): appearances,
+ * starts, minutes, goals, assists and average match rating, plus the latest photo.
+ * `form.matches` is the number of box scores looked at, for every player.
+ */
+export function recentFormFromBoxScores(
+  boxScoresNewestFirst: HlBoxScoreTeam[][],
+  teamId: number,
+): Map<number, RecentPlayer> {
+  const matches = boxScoresNewestFirst.length;
+  const out = new Map<number, RecentPlayer & { ratings: number[] }>();
+
+  for (const boxScore of boxScoresNewestFirst) {
+    const side = boxScore.find((t) => t.team.id === teamId);
+    for (const p of side?.players ?? []) {
+      const entry = out.get(p.id) ?? {
+        form: { ...EMPTY_FORM, matches },
+        photoUrl: null,
+        name: p.name,
+        position: mapPosition(p.position),
+        shirtNumber: p.shirtNumber ?? null,
+        ratings: [],
+      };
+      const minutes = p.minutesPlayed ?? 0;
+      const s = boxStats(p);
+      if (minutes > 0) {
+        entry.form.apps += 1;
+        if (!p.isSubstitute) entry.form.starts += 1;
+        entry.form.minutes += minutes;
+        entry.form.goals += s.goalsScored ?? 0;
+        entry.form.assists += s.assists ?? 0;
+        const rating = parseRating(p.matchRating);
+        if (rating != null) entry.ratings.push(rating);
+      }
+      // Newest first, so the first photo seen is the most recent one.
+      entry.photoUrl ??= p.logo || null;
+      out.set(p.id, entry);
+    }
+  }
+
+  return new Map(
+    [...out].map(([id, { ratings, ...rest }]) => [
+      id,
+      {
+        ...rest,
+        form: {
+          ...rest.form,
+          avgRating: ratings.length
+            ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 100) / 100
+            : null,
+        },
+      },
+    ]),
+  );
+}
 
 /**
  * Highlightly has no squad endpoint, so a team's player pool is built from the line-ups
- * (starters + full bench) of its recent matches. Most recent appearance wins.
+ * (starters + full bench) of its recent matches, enriched with recent form and photos from
+ * the same matches' box scores. Most recent appearance wins. Every pool player gets a form
+ * (zero appearances if they never got on the pitch), so prices reflect bench players too.
  */
 export function playerPoolFromLineups(
   lineupsNewestFirst: HlLineups[],
   teamId: number,
+  recent: Map<number, RecentPlayer> = new Map(),
+  matchesLookedAt = lineupsNewestFirst.length,
 ): PlayerRow[] {
   const pool = new Map<number, PlayerRow>();
   for (const lineups of lineupsNewestFirst) {
     for (const e of mapLineups(lineups)) {
       if (e.team_api_id !== teamId || pool.has(e.api_player_id)) continue;
-      pool.set(e.api_player_id, toPlayerRow(e));
+      const r = recent.get(e.api_player_id);
+      pool.set(
+        e.api_player_id,
+        toPlayerRow({
+          ...toPlayerRow(e),
+          position: e.position ?? r?.position ?? "MID",
+          photo_url: r?.photoUrl ?? null,
+          form: r?.form ?? { ...EMPTY_FORM, matches: matchesLookedAt },
+        }),
+      );
     }
+  }
+  // Players who played (per the box scores) but aren't in a line-up we have — rare.
+  const teamName = [...pool.values()][0]?.team_name ?? "";
+  for (const [id, r] of recent) {
+    if (pool.has(id) || r.form.apps === 0) continue;
+    pool.set(
+      id,
+      toPlayerRow({
+        api_player_id: id,
+        name: r.name,
+        team_api_id: teamId,
+        team_name: teamName,
+        position: r.position ?? "MID",
+        shirt_number: r.shirtNumber,
+        photo_url: r.photoUrl,
+        form: r.form,
+      }),
+    );
   }
   return [...pool.values()];
 }
@@ -219,6 +334,7 @@ export interface StatsEntry {
   name: string;
   team_api_id: number;
   position: Position | null;
+  photoUrl: string | null;
   stats: PlayerMatchStats;
 }
 
@@ -243,7 +359,7 @@ export function mapBoxScore(
   return boxScore.flatMap(({ team, players }) => {
     const teamConceded = team.id === ctx.barcaTeamId ? ctx.opponentGoals : ctx.barcaGoals;
     return players.map((p) => {
-      const s = p.statistics?.[0] ?? {};
+      const s = boxStats(p);
       const minutes = p.minutesPlayed ?? 0;
       const played = minutes > 0;
       const isKeeper = p.position === "Goalkeeper";
@@ -252,6 +368,7 @@ export function mapBoxScore(
         name: p.name,
         team_api_id: team.id,
         position: mapPosition(p.position),
+        photoUrl: p.logo || null,
         stats: {
           minutes,
           goals: s.goalsScored ?? 0,

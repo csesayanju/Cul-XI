@@ -138,11 +138,16 @@ export interface HlBoxScorePlayer {
   id: number;
   name: string;
   fullName?: string;
+  /** URL of the player's photo, if available. */
+  logo?: string | null;
+  /** e.g. "7.40"; null when the player didn't play. */
+  matchRating?: string | null;
   shirtNumber: number | null;
   position: HlPosition | null;
   minutesPlayed: number | null;
   isSubstitute: boolean;
-  statistics: HlBoxScoreStatistics[];
+  /** The live API returns an object; the published spec documents a one-item array. */
+  statistics: HlBoxScoreStatistics | HlBoxScoreStatistics[] | null;
 }
 
 export interface HlBoxScoreTeam {

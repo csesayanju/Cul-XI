@@ -16,6 +16,7 @@ import {
   parseScore,
   playerPoolFromLineups,
   recentFinished,
+  recentFormFromBoxScores,
   statusCode,
   type TrackedLeagues,
 } from "./mappers";
@@ -148,11 +149,70 @@ describe("line-ups", () => {
     expect(pool.find((p) => p.api_player_id === 2210000013)?.position).toBe("FWD");
   });
 
-  it("produces rows with exactly the players table columns (no line-up fields)", () => {
-    const [row] = playerPoolFromLineups([lineups], OPP);
-    expect(Object.keys(row!).sort()).toEqual(
-      ["api_player_id", "name", "position", "shirt_number", "team_api_id", "team_name"].sort(),
-    );
+  it("produces rows with only players-table columns (no line-up fields)", () => {
+    const allowed = new Set([
+      "api_player_id",
+      "name",
+      "position",
+      "shirt_number",
+      "team_api_id",
+      "team_name",
+      "photo_url",
+      "form",
+    ]);
+    for (const row of playerPoolFromLineups([lineups], OPP)) {
+      expect(Object.keys(row).filter((k) => !allowed.has(k))).toEqual([]);
+    }
+  });
+
+  it("enriches the pool with recent form and photos from box scores", () => {
+    const recent = recentFormFromBoxScores([boxScoreSample as HlBoxScoreTeam[]], BARCA);
+    const pool = playerPoolFromLineups([lineups], BARCA, recent, 1);
+    const font = pool.find((p) => p.api_player_id === 2200000008)!;
+    expect(font.form).toMatchObject({ matches: 1, apps: 1, starts: 1, minutes: 90, goals: 1 });
+    expect(font.form?.avgRating).toBe(8.4);
+    // Bench player who never came on: zero appearances, but still priced from form.
+    const bench = pool.find((p) => p.api_player_id === 2200000002)!;
+    expect(bench.form).toMatchObject({ matches: 1, apps: 0, minutes: 0 });
+  });
+});
+
+describe("recentFormFromBoxScores", () => {
+  const box = boxScoreSample as HlBoxScoreTeam[];
+
+  it("aggregates appearances, minutes, goals, assists and ratings over several matches", () => {
+    const form = recentFormFromBoxScores([box, box], BARCA);
+    expect(form.get(2200000013)!.form).toEqual({
+      matches: 2,
+      apps: 2,
+      starts: 2,
+      minutes: 180,
+      goals: 2,
+      assists: 0,
+      avgRating: 7.6,
+    });
+  });
+
+  it("counts unused subs as zero appearances with no rating", () => {
+    expect(recentFormFromBoxScores([box], BARCA).get(2200000011)!.form).toMatchObject({
+      apps: 0,
+      minutes: 0,
+      avgRating: null,
+    });
+  });
+
+  it("only looks at the requested team", () => {
+    const form = recentFormFromBoxScores([box], OPP);
+    expect(form.has(2210000001)).toBe(true);
+    expect(form.has(2200000001)).toBe(false);
+  });
+
+  it("keeps the most recent photo", () => {
+    const withPhoto = (url: string): HlBoxScoreTeam[] =>
+      box.map((t) => ({ ...t, players: t.players.map((p) => ({ ...p, logo: url })) }));
+    const form = recentFormFromBoxScores([withPhoto("new.png"), withPhoto("old.png")], BARCA);
+    expect(form.get(2200000001)!.photoUrl).toBe("new.png");
+    expect(recentFormFromBoxScores([box], BARCA).get(2200000001)!.photoUrl).toBeNull();
   });
 });
 

@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { EMPTY_FORM, type PlayerForm } from "./pricing";
 import type { Competition, Position } from "./types";
 
 /** Read helpers used by pages. They run with the user's client, so RLS applies. */
@@ -59,6 +60,9 @@ export interface MatchPlayer {
   price: number;
   shirtNumber: number | null;
   lineupStatus: "unknown" | "starting" | "bench" | "not_in_squad";
+  photoUrl: string | null;
+  form: PlayerForm | null;
+  priceLocked: boolean;
 }
 
 export async function listMatchPlayers(
@@ -68,7 +72,7 @@ export async function listMatchPlayers(
   const { data } = await db
     .from("match_players")
     .select(
-      "lineup_status, players(id, name, position, team_api_id, team_name, price, shirt_number)",
+      "lineup_status, players(id, name, position, team_api_id, team_name, price, shirt_number, photo_url, form, price_locked)",
     )
     .eq("match_id", matchId)
     .eq("is_available", true);
@@ -83,6 +87,9 @@ export async function listMatchPlayers(
       team_name: string;
       price: number;
       shirt_number: number | null;
+      photo_url: string | null;
+      form: Partial<PlayerForm> | null;
+      price_locked: boolean;
     } | null;
   };
 
@@ -92,11 +99,15 @@ export async function listMatchPlayers(
       id: Number(p!.id),
       name: p!.name,
       position: p!.position,
-      teamId: p!.team_api_id,
+      teamId: Number(p!.team_api_id),
       teamName: p!.team_name,
       price: Number(p!.price),
       shirtNumber: p!.shirt_number,
       lineupStatus: lineup_status,
+      photoUrl: p!.photo_url,
+      form:
+        typeof p!.form?.matches === "number" ? ({ ...EMPTY_FORM, ...p!.form } as PlayerForm) : null,
+      priceLocked: p!.price_locked,
     }))
     .sort((a, b) => b.price - a.price || a.name.localeCompare(b.name));
 }

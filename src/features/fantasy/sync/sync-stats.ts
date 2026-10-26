@@ -93,6 +93,7 @@ export async function syncStats(
           team_name: e.team_api_id === config.barcaTeamId ? "Barcelona" : match.opponent_name,
           position: e.position ?? "MID",
           shirt_number: null,
+          photo_url: e.photoUrl,
         })),
       );
       for (const [k, v] of added) ids.set(k, v);

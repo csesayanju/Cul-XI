@@ -4,9 +4,10 @@ import {
   hasLineups,
   playerPoolFromLineups,
   recentFinished,
+  recentFormFromBoxScores,
   type PlayerRow,
 } from "@/lib/highlightly/mappers";
-import type { HlLineups } from "@/lib/highlightly/types";
+import type { HlBoxScoreTeam, HlLineups } from "@/lib/highlightly/types";
 
 import {
   check,
@@ -18,30 +19,45 @@ import {
 } from "./context";
 import { upsertPlayers } from "./players";
 
-/** How many recent matches' line-ups make up a team's player pool. */
-const POOL_MATCHES = 2;
+/** How many recent matches make up a team's player pool and form (and so its prices). */
+const RECENT_MATCHES = 3;
 
 /**
  * Builds a team's player pool from the line-ups (starters + bench) of its last
- * `POOL_MATCHES` finished games. Cost: 1 request (last five games, cached 1 day) + up to
- * `POOL_MATCHES` line-up requests (cached forever). Highlightly has no squad endpoint.
+ * `RECENT_MATCHES` finished games, with recent form and photos from their box scores.
+ * Cost: 1 request (last five games, cached 1 day) + 2 per new finished match (line-ups +
+ * box score, cached forever). Highlightly has no squad endpoint.
  */
 async function teamPool({ api }: SyncContext, teamId: number): Promise<PlayerRow[]> {
   const { data: lastFive } = await api.lastFiveGames(teamId, {
     maxAgeMs: DAY,
     shouldCache: (d) => d.length > 0,
   });
+  const recent = recentFinished(lastFive, RECENT_MATCHES);
+
   const lineups: HlLineups[] = [];
-  for (const m of recentFinished(lastFive, POOL_MATCHES)) {
-    const { data } = await api.lineups(m.id, { shouldCache: hasLineups });
-    if (hasLineups(data)) lineups.push(data);
+  const boxScores: HlBoxScoreTeam[][] = [];
+  for (const m of recent) {
+    const { data: l } = await api.lineups(m.id, { shouldCache: hasLineups });
+    if (hasLineups(l)) lineups.push(l);
+    const { data: b } = await api.boxScore(m.id, {
+      shouldCache: (d) => d.some((t) => t.players.length > 0),
+    });
+    if (b.some((t) => t.players.length > 0)) boxScores.push(b);
   }
-  return playerPoolFromLineups(lineups, teamId);
+
+  return playerPoolFromLineups(
+    lineups,
+    teamId,
+    recentFormFromBoxScores(boxScores, teamId),
+    boxScores.length,
+  );
 }
 
 /**
- * Loads player pools for upcoming matches (next `days` days) that have not been synced
- * yet: Barça (shared by every match in the run) + each opponent.
+ * Refreshes player pools, form, photos and prices for upcoming matches (next `days` days):
+ * Barça (shared by every match in the run) + each opponent. Runs daily, so prices follow
+ * form; mostly served from cache. Teams already saved keep the prices they paid.
  */
 export async function syncSquads(
   ctx: SyncContext,
@@ -53,12 +69,11 @@ export async function syncSquads(
   query = matchId
     ? query.eq("id", matchId)
     : query
-        .is("squads_synced_at", null)
         .gt("kickoff_at", now.toISOString())
         .lte("kickoff_at", new Date(now.getTime() + days * DAY).toISOString());
   const matches = check(await query.order("kickoff_at"), "load matches") as MatchRecord[];
 
-  if (matches.length === 0) return { ok: true, message: "No matches need squads." };
+  if (matches.length === 0) return { ok: true, message: "No upcoming matches in range." };
 
   const barca = await teamPool(ctx, config.barcaTeamId);
   const synced: string[] = [];
@@ -91,5 +106,5 @@ export async function syncSquads(
     );
   }
 
-  return { ok: true, message: `Squads: ${synced.join("; ")}.` };
+  return { ok: true, message: `Squads & prices: ${synced.join("; ")}.` };
 }

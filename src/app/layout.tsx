@@ -27,6 +27,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const nav = [
     { href: "/matches", label: "Matches" },
     { href: "/leaderboard", label: "Table" },
+    { href: "/rules", label: "Rules" },
     { href: "/trivia", label: "Trivia" },
     ...(user?.profile?.is_admin ? [{ href: "/admin", label: "Admin" }] : []),
   ];
@@ -58,7 +59,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </header>
         <main className="mx-auto max-w-2xl px-4 py-6">{children}</main>
         <footer className="mx-auto max-w-2xl px-4 pb-8 text-center text-xs text-ink-muted">
-          Culé XI is a free, private game for friends. Not affiliated with FC Barcelona.
+          <Link href="/rules" className="underline">
+            How points work
+          </Link>{" "}
+          · Culé XI is a free, private game for friends. Not affiliated with FC Barcelona.
         </footer>
       </body>
     </html>

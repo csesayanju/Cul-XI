@@ -105,27 +105,3 @@ export function Notice({
     </p>
   );
 }
-
-/** Player initials avatar — no photos or club imagery are used anywhere. */
-export function Initials({ name, barca }: { name: string; barca: boolean }) {
-  const initials = name
-    .replace(/[^\p{L}\s.-]/gu, "")
-    .split(/[\s.-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]!.toUpperCase())
-    .join("");
-  return (
-    <span
-      aria-hidden
-      className={cx(
-        "inline-flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-        barca
-          ? "bg-gradient-to-br from-blaugrana-700 to-garnet-500 text-white"
-          : "bg-line text-ink",
-      )}
-    >
-      {initials || "?"}
-    </span>
-  );
-}

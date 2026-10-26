@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { LocalTime } from "@/components/local-time";
-import { Badge, Card, Initials, Notice, PageTitle } from "@/components/ui";
+import { PlayerAvatar } from "@/components/player-avatar";
+import { Badge, Card, Notice, PageTitle } from "@/components/ui";
+import { Pitch, pitchName } from "@/features/fantasy/components/pitch";
 import { COMPETITION_LABELS, SCORE_LABELS } from "@/features/fantasy/labels";
 import { getMatch, getMyTeam, listMatchPlayers } from "@/features/fantasy/queries";
+import { POSITIONS, type Position } from "@/features/fantasy/types";
 import type { FantasyPointsBreakdown } from "@/features/fantasy/scoring/score-fantasy-team";
 import { requireUser } from "@/lib/auth";
 import { hasKickedOff } from "@/lib/time";
@@ -61,6 +64,7 @@ export default async function PickPage({ params }: { params: Promise<{ id: strin
         <TeamBuilder
           matchId={matchId}
           barcaTeamId={barcaTeamId}
+          opponentName={match.opponent_name}
           players={players}
           initial={{
             playerIds: team?.picks.map((p) => p.playerId) ?? [],
@@ -97,6 +101,50 @@ export default async function PickPage({ params }: { params: Promise<{ id: strin
               {breakdown.errors?.map((e) => e.message).join(" ")}
             </Notice>
           )}
+          <Pitch
+            rows={
+              Object.fromEntries(
+                POSITIONS.map((pos) => [
+                  pos,
+                  team.picks
+                    .filter((pick) => byId.get(pick.playerId)?.position === pos)
+                    .map((pick) => {
+                      const p = byId.get(pick.playerId)!;
+                      const score = scoreById.get(pick.playerId);
+                      const role = pick.isCaptain ? "C" : pick.isViceCaptain ? "VC" : null;
+                      return (
+                        <div
+                          key={pick.playerId}
+                          className="flex w-16 flex-col items-center gap-0.5"
+                        >
+                          <span className="relative">
+                            <PlayerAvatar
+                              name={p.name}
+                              photoUrl={p.photoUrl}
+                              barca={p.teamId === barcaTeamId}
+                            />
+                            {role && (
+                              <span className="absolute -top-1 -right-2 rounded-full bg-gold-400 px-1 text-[10px] font-black text-blaugrana-950 ring-1 ring-white">
+                                {role}
+                              </span>
+                            )}
+                          </span>
+                          <span className="max-w-full truncate rounded bg-white px-1 text-[11px] font-semibold text-blaugrana-950">
+                            {pitchName(p.name)}
+                          </span>
+                          <span className="rounded bg-garnet-500 px-1.5 text-[11px] font-black text-white">
+                            {score ? score.points : "–"}
+                          </span>
+                        </div>
+                      );
+                    }),
+                ]),
+              ) as Record<Position, React.ReactNode[]>
+            }
+          />
+          <h2 className="pt-2 text-sm font-semibold tracking-wide text-ink-muted uppercase">
+            Breakdown
+          </h2>
           <ul className="space-y-2">
             {team.picks.map((pick) => {
               const p = byId.get(pick.playerId);
@@ -105,7 +153,12 @@ export default async function PickPage({ params }: { params: Promise<{ id: strin
                 <li key={pick.playerId}>
                   <Card className="p-3">
                     <div className="flex items-center gap-3">
-                      <Initials name={p?.name ?? "?"} barca={p?.teamId === barcaTeamId} />
+                      <PlayerAvatar
+                        name={p?.name ?? "?"}
+                        photoUrl={p?.photoUrl}
+                        barca={p?.teamId === barcaTeamId}
+                        size="sm"
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold">
                           {p?.name ?? score?.name ?? "Unknown"}{" "}

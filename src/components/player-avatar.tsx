@@ -47,7 +47,8 @@ export function PlayerAvatar({
         referrerPolicy="no-referrer"
         onError={() => setFailed(true)}
         className={cx(
-          "shrink-0 rounded-full bg-surface object-cover ring-2",
+          // Portrait photos: aim the crop at the upper part, where the face usually is.
+          "shrink-0 rounded-full bg-surface object-cover object-[50%_20%] ring-2",
           dims,
           ring,
           className,

@@ -10,6 +10,7 @@ interface ExistingPlayer {
   price: number;
   price_locked: boolean;
   photo_url: string | null;
+  full_name: string | null;
   form: PlayerForm | Record<string, never>;
 }
 
@@ -33,7 +34,7 @@ export async function upsertPlayers(
   const existing = check(
     await db
       .from("players")
-      .select("api_player_id, price, price_locked, photo_url, form")
+      .select("api_player_id, price, price_locked, photo_url, full_name, form")
       .in(
         "api_player_id",
         unique.map((r) => r.api_player_id),
@@ -55,6 +56,7 @@ export async function upsertPlayers(
       shirt_number: row.shirt_number,
       // Same keys on every object: PostgREST upserts the union of columns.
       photo_url: row.photo_url ?? old?.photo_url ?? null,
+      full_name: row.full_name ?? old?.full_name ?? null,
       form,
       price: old?.price_locked ? Number(old.price) : priceFor(row.position, form),
     };

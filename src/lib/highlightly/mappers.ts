@@ -147,11 +147,16 @@ export interface PlayerRow {
   shirt_number: number | null;
   /** Only set when known; never overwrites a stored photo with null. */
   photo_url?: string | null;
+  /** Full registered name, when the box score provides it (helps photo lookups). */
+  full_name?: string | null;
   /** Recent form, set by the squad sync; drives automatic pricing. */
   form?: PlayerForm;
 }
 
-export interface LineupEntry extends Omit<PlayerRow, "position" | "photo_url" | "form"> {
+export interface LineupEntry extends Omit<
+  PlayerRow,
+  "position" | "photo_url" | "form" | "full_name"
+> {
   position: Position | null;
   lineup_status: "starting" | "bench";
 }
@@ -194,6 +199,7 @@ export const toPlayerRow = (e: LineupEntry | PlayerRow): PlayerRow => ({
   position: e.position ?? "MID",
   shirt_number: e.shirt_number,
   ...("photo_url" in e && e.photo_url ? { photo_url: e.photo_url } : {}),
+  ...("full_name" in e && e.full_name ? { full_name: e.full_name } : {}),
   ...("form" in e && e.form ? { form: e.form } : {}),
 });
 
@@ -212,6 +218,7 @@ export interface RecentPlayer {
   form: PlayerForm;
   photoUrl: string | null;
   name: string;
+  fullName: string | null;
   position: Position | null;
   shirtNumber: number | null;
 }
@@ -235,6 +242,7 @@ export function recentFormFromBoxScores(
         form: { ...EMPTY_FORM, matches },
         photoUrl: null,
         name: p.name,
+        fullName: p.fullName || null,
         position: mapPosition(p.position),
         shirtNumber: p.shirtNumber ?? null,
         ratings: [],
@@ -295,6 +303,7 @@ export function playerPoolFromLineups(
           ...toPlayerRow(e),
           position: e.position ?? r?.position ?? "MID",
           photo_url: r?.photoUrl ?? null,
+          full_name: r?.fullName ?? null,
           form: r?.form ?? { ...EMPTY_FORM, matches: matchesLookedAt },
         }),
       );
@@ -314,6 +323,7 @@ export function playerPoolFromLineups(
         position: r.position ?? "MID",
         shirt_number: r.shirtNumber,
         photo_url: r.photoUrl,
+        full_name: r.fullName,
         form: r.form,
       }),
     );

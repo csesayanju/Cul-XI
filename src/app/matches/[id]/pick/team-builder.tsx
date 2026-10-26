@@ -326,6 +326,18 @@ function PlayerSheet(props: {
               {p.price.toFixed(1)}
             </p>
             <p className="text-xs text-ink-muted">{formLine(p)}</p>
+            {p.photoUrl && p.photoCredit && (
+              <p className="text-[11px] text-ink-muted">
+                Photo:{" "}
+                {p.photoPageUrl ? (
+                  <a href={p.photoPageUrl} target="_blank" rel="noreferrer" className="underline">
+                    {p.photoCredit}
+                  </a>
+                ) : (
+                  p.photoCredit
+                )}
+              </p>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">

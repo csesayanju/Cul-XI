@@ -23,7 +23,8 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  // Touching the user revalidates and, if needed, refreshes the session.
-  await supabase.auth.getUser();
+  // Verifies the session locally (asymmetric JWT keys, no Auth round trip) and refreshes it
+  // when it's about to expire, writing the new cookies via setAll above.
+  await supabase.auth.getClaims();
   return response;
 }

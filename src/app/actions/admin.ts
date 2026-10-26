@@ -8,6 +8,7 @@ import { createSyncContext, type SyncResult } from "@/features/fantasy/sync/cont
 import { recalculatePoints } from "@/features/fantasy/sync/recalculate-points";
 import { syncFixtures } from "@/features/fantasy/sync/sync-fixtures";
 import { syncPhotos } from "@/features/fantasy/sync/sync-photos";
+import { syncValues } from "@/features/fantasy/sync/sync-values";
 import { syncLineups } from "@/features/fantasy/sync/sync-lineups";
 import { syncSquads } from "@/features/fantasy/sync/sync-squads";
 import { syncStats } from "@/features/fantasy/sync/sync-stats";
@@ -30,6 +31,7 @@ const JOBS = {
   lineups: (matchId?: number) => syncLineups(createSyncContext(), { matchId }),
   stats: (matchId?: number) => syncStats(createSyncContext(), { matchId }),
   photos: (matchId?: number) => syncPhotos(createSyncContext(), { matchId }),
+  values: () => syncValues(createSyncContext()),
   guests: () => cleanupGuests(createSyncContext().db),
   points: async (matchId?: number): Promise<SyncResult> => {
     if (!matchId) return { ok: false, message: "Choose a match to recalculate." };

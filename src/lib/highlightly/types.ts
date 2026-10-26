@@ -155,6 +155,21 @@ export interface HlBoxScoreTeam {
   players: HlBoxScorePlayer[];
 }
 
+// --- GET /players/{id} (returns a one-item array) ---------------------------
+export interface HlMarketValue {
+  value: number | null;
+  currency: string | null;
+  /** "dd/mm/yyyy" */
+  recordedDate: string | null;
+  club?: string | null;
+}
+
+export interface HlPlayerDetail {
+  id: number;
+  name: string;
+  marketValue?: HlMarketValue[] | null;
+}
+
 // --- GET /teams, /leagues ----------------------------------------------------
 export interface HlLeague {
   id: number;

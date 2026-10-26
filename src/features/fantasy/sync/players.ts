@@ -11,6 +11,7 @@ interface ExistingPlayer {
   price_locked: boolean;
   photo_url: string | null;
   full_name: string | null;
+  market_value: number | null;
   form: PlayerForm | Record<string, never>;
 }
 
@@ -20,7 +21,7 @@ const hasForm = (f: ExistingPlayer["form"] | undefined): f is PlayerForm =>
 /**
  * Upserts players by API id and returns a map of api_player_id -> players.id.
  *
- * Prices come from recent form (see pricing.ts) and are refreshed on every sync, except for
+ * Prices come from recent form + market value (see pricing.ts) and are refreshed on every sync, except for
  * players whose price an admin locked. A stored photo or form is kept when a row doesn't
  * bring a new one (e.g. a line-up entry), so partial rows never wipe data.
  */
@@ -34,7 +35,7 @@ export async function upsertPlayers(
   const existing = check(
     await db
       .from("players")
-      .select("api_player_id, price, price_locked, photo_url, full_name, form")
+      .select("api_player_id, price, price_locked, photo_url, full_name, market_value, form")
       .in(
         "api_player_id",
         unique.map((r) => r.api_player_id),
@@ -58,7 +59,9 @@ export async function upsertPlayers(
       photo_url: row.photo_url ?? old?.photo_url ?? null,
       full_name: row.full_name ?? old?.full_name ?? null,
       form,
-      price: old?.price_locked ? Number(old.price) : priceFor(row.position, form),
+      price: old?.price_locked
+        ? Number(old.price)
+        : priceFor(row.position, form, old?.market_value == null ? null : Number(old.market_value)),
     };
   });
 

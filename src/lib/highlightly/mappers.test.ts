@@ -9,6 +9,7 @@ import {
   competitionFor,
   hasLineups,
   isFinished,
+  latestMarketValue,
   mapBoxScore,
   mapLineups,
   mapMatchDetail,
@@ -131,6 +132,21 @@ describe("line-ups", () => {
     });
   });
 
+  it("skips players without an id", () => {
+    const withGap: HlLineups = {
+      homeTeam: {
+        ...lineups.homeTeam!,
+        substitutes: [
+          ...lineups.homeTeam!.substitutes,
+          { id: null as unknown as number, name: "Unknown", number: null, position: null },
+        ],
+      },
+      awayTeam: null,
+    };
+    expect(mapLineups(withGap).every((r) => Number.isFinite(r.api_player_id))).toBe(true);
+    expect(mapLineups(withGap)).toHaveLength(13);
+  });
+
   it("also accepts a flat initialLineup", () => {
     const flat: HlLineups = {
       homeTeam: {
@@ -213,6 +229,26 @@ describe("recentFormFromBoxScores", () => {
     const form = recentFormFromBoxScores([withPhoto("new.png"), withPhoto("old.png")], BARCA);
     expect(form.get(2200000001)!.photoUrl).toBe("new.png");
     expect(recentFormFromBoxScores([box], BARCA).get(2200000001)!.photoUrl).toBeNull();
+  });
+});
+
+describe("latestMarketValue", () => {
+  it("picks the most recent value by date, regardless of order", () => {
+    expect(
+      latestMarketValue([
+        { value: 2_000_000, currency: "€", recordedDate: "22/02/2017" },
+        { value: 70_000_000, currency: "€", recordedDate: "05/06/2026" },
+        { value: 60_000_000, currency: "€", recordedDate: "15/12/2025" },
+      ]),
+    ).toBe(70_000_000);
+  });
+
+  it("ignores empty or undated entries", () => {
+    expect(
+      latestMarketValue([{ value: null, currency: "€", recordedDate: "01/01/2026" }]),
+    ).toBeNull();
+    expect(latestMarketValue([{ value: 5_000_000, currency: "€", recordedDate: null }])).toBeNull();
+    expect(latestMarketValue(undefined)).toBeNull();
   });
 });
 

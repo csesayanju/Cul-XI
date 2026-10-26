@@ -1,13 +1,13 @@
 import type { Position } from "./types";
 
 /**
- * Performance-based player prices.
+ * Player prices (Dream11-style scale: roughly 7.5–11 credits, budget 100 for 11).
  *
- * Each player gets a 0–1 "form score" from their last few matches (minutes, match rating,
- * goal involvement), which maps onto a price band for their position. Bands were calibrated
- * on real 2026/27 data: an average XI of regular starters costs ~95–105 credits, the most
- * in-form XI ~108+, and fringe players 5–7 — so you can only afford stars by also picking
- * some value players.
+ * price = band(position) × (65% status + 35% form)
+ *  - status: the player's latest market value on a log scale (≈€1m → 0, €150m+ → 1), so a
+ *    star in a quiet patch stays a star;
+ *  - form: last 5 matches — minutes, match rating, goal involvement.
+ * Without a known market value, status defaults to a typical squad player's.
  * Admin-set prices are locked and never re-priced automatically.
  */
 
@@ -35,11 +35,18 @@ export const EMPTY_FORM: PlayerForm = {
 };
 
 export const PRICE_BANDS: Record<Position, { min: number; max: number }> = {
-  GK: { min: 5.0, max: 9.5 },
-  DEF: { min: 5.0, max: 10.5 },
-  MID: { min: 5.5, max: 14.0 },
-  FWD: { min: 6.0, max: 15.0 },
+  GK: { min: 7.5, max: 9.5 },
+  DEF: { min: 7.5, max: 10.0 },
+  MID: { min: 7.5, max: 11.0 },
+  FWD: { min: 8.0, max: 11.0 },
 };
+
+/** Share of the price driven by status (market value); the rest is recent form. */
+export const STATUS_WEIGHT = 0.65;
+/** Status used when the market value is unknown (≈ a €5m squad player). */
+export const UNKNOWN_STATUS = 0.32;
+const VALUE_FLOOR = 1_000_000;
+const VALUE_CEIL = 150_000_000;
 
 /** How much each factor counts, per position (each row sums to 1). */
 const WEIGHTS: Record<Position, { availability: number; quality: number; threat: number }> = {
@@ -77,8 +84,23 @@ export function formScore(position: Position, form: PlayerForm): number {
   return clamp01(w.availability * availability + w.quality * quality + w.threat * threat);
 }
 
-/** Price in credits (multiples of 0.5) for a player's position and recent form. */
-export function priceFor(position: Position, form: PlayerForm = EMPTY_FORM): number {
+/** Market value (euros) mapped to 0–1 on a log scale: €1m or less = 0, €150m or more = 1. */
+export function statusScore(marketValue: number | null | undefined): number {
+  if (marketValue == null || marketValue <= 0) return UNKNOWN_STATUS;
+  return clamp01(
+    Math.log10(Math.max(marketValue, VALUE_FLOOR) / VALUE_FLOOR) /
+      Math.log10(VALUE_CEIL / VALUE_FLOOR),
+  );
+}
+
+/** Price in credits (multiples of 0.5) for a player's position, recent form and market value. */
+export function priceFor(
+  position: Position,
+  form: PlayerForm = EMPTY_FORM,
+  marketValue?: number | null,
+): number {
   const { min, max } = PRICE_BANDS[position];
-  return roundHalf(min + (max - min) * formScore(position, form));
+  const score =
+    STATUS_WEIGHT * statusScore(marketValue) + (1 - STATUS_WEIGHT) * formScore(position, form);
+  return roundHalf(min + (max - min) * score);
 }

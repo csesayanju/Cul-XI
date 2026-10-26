@@ -170,9 +170,11 @@ export default function RulesPage() {
         <h2 className="text-lg font-bold">Player prices</h2>
         <Card className="space-y-3 text-sm">
           <p>
-            Prices follow <b>recent form</b>: each player&apos;s last 3 matches — how many minutes
-            they played, their match ratings, and their goals and assists. They&apos;re updated
-            every day, so a player on a hot streak gets more expensive.
+            Prices work like Dream11: most players cost 7.5–11 credits. About two-thirds of a price
+            is the player&apos;s <b>status</b> (their market value), so stars stay expensive even
+            through a quiet patch. The rest is <b>recent form</b> over their last 5 matches —
+            minutes, match ratings, goals and assists — so a hot streak still pushes a price up.
+            Prices are updated every day.
           </p>
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {POSITIONS.map((p) => (
@@ -185,8 +187,9 @@ export default function RulesPage() {
             ))}
           </ul>
           <p className="text-xs text-ink-muted">
-            Eleven regular starters fit in the budget; a team full of stars doesn&apos;t. Once you
-            save a team, it keeps the prices you paid even if they change later.
+            A mix of Barça starters and opponent regulars fits the budget; a team full of stars
+            doesn&apos;t. Once you save a team, it keeps the prices you paid even if they change
+            later.
           </p>
         </Card>
       </section>

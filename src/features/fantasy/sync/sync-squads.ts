@@ -20,7 +20,7 @@ import {
 import { upsertPlayers } from "./players";
 
 /** How many recent matches make up a team's player pool and form (and so its prices). */
-const RECENT_MATCHES = 3;
+const RECENT_MATCHES = 5;
 
 /**
  * Builds a team's player pool from the line-ups (starters + bench) of its last

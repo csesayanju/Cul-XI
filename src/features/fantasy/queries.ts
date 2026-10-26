@@ -66,6 +66,8 @@ export interface MatchPlayer {
   photoPageUrl: string | null;
   photoLocked: boolean;
   form: PlayerForm | null;
+  /** Latest market value in euros, if known. */
+  marketValue: number | null;
   priceLocked: boolean;
 }
 
@@ -76,7 +78,7 @@ export async function listMatchPlayers(
   const { data } = await db
     .from("match_players")
     .select(
-      "lineup_status, players(id, name, position, team_api_id, team_name, price, shirt_number, photo_url, photo_credit, photo_page_url, photo_locked, form, price_locked)",
+      "lineup_status, players(id, name, position, team_api_id, team_name, price, shirt_number, photo_url, photo_credit, photo_page_url, photo_locked, form, market_value, price_locked)",
     )
     .eq("match_id", matchId)
     .eq("is_available", true);
@@ -96,6 +98,7 @@ export async function listMatchPlayers(
       photo_page_url: string | null;
       photo_locked: boolean;
       form: Partial<PlayerForm> | null;
+      market_value: number | null;
       price_locked: boolean;
     } | null;
   };
@@ -117,6 +120,7 @@ export async function listMatchPlayers(
       photoLocked: p!.photo_locked,
       form:
         typeof p!.form?.matches === "number" ? ({ ...EMPTY_FORM, ...p!.form } as PlayerForm) : null,
+      marketValue: p!.market_value == null ? null : Number(p!.market_value),
       priceLocked: p!.price_locked,
     }))
     .sort((a, b) => b.price - a.price || a.name.localeCompare(b.name));

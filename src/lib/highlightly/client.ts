@@ -7,6 +7,7 @@ import type {
   HlMatch,
   HlMatchDetail,
   HlPage,
+  HlPlayerDetail,
   HlTeamRef,
 } from "./types";
 
@@ -223,6 +224,10 @@ export function createHighlightlyClient(options: HighlightlyClientOptions) {
     /** Match details incl. score, state and events. The API returns a one-item array. */
     match: (matchId: number, opts?: RequestOptions<HlMatchDetail[]>) =>
       request<HlMatchDetail[]>(`/matches/${matchId}`, {}, opts),
+
+    /** Player profile (incl. market value history). The API returns a one-item array. */
+    player: (playerId: number, opts?: RequestOptions<HlPlayerDetail[]>) =>
+      request<HlPlayerDetail[]>(`/players/${playerId}`, {}, opts),
 
     lastFiveGames: (teamId: number, opts?: RequestOptions<HlMatch[]>) =>
       request<HlMatch[]>("/last-five-games", { teamId }, opts),

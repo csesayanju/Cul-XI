@@ -11,6 +11,7 @@ const JOB_LABELS: Record<AdminJob, { label: string; hint: string }> = {
   squads: { label: "Sync squads", hint: "≤3 per team, mostly cached" },
   lineups: { label: "Sync line-ups", hint: "1 request, from 40 min before kickoff" },
   stats: { label: "Sync stats + points", hint: "2 requests per finished match" },
+  values: { label: "Update market values", hint: "≤25 requests, keeps 30 spare" },
   photos: { label: "Find player photos", hint: "Wikipedia, no API quota" },
   guests: { label: "Delete unused guests", hint: "Older than 2h, never joined" },
   points: { label: "Recalculate points", hint: "No API requests" },

@@ -10,14 +10,14 @@ name: Sync match data
 on:
   schedule:
     - cron: "5,20,35,50 * * * *" # every 15 min: line-ups + stats
-    - cron: "30 5 * * *" # daily 05:30 UTC: fixtures + squads + player photos
+    - cron: "30 5 * * *" # daily 05:30 UTC: fixtures, squads, market values, player photos
     - cron: "45 */2 * * *" # every 2 hours: delete unused guest accounts older than 2 hours
   workflow_dispatch:
     inputs:
       job:
         description: "Which sync to run"
         type: choice
-        options: [all, fixtures, squads, photos, lineups, stats, guests]
+        options: [all, fixtures, squads, values, photos, lineups, stats, guests]
         default: all
 
 permissions:
@@ -47,9 +47,9 @@ jobs:
             exit 0
           fi
           if [ "$EVENT" = "workflow_dispatch" ]; then
-            if [ "$INPUT_JOB" = "all" ]; then jobs="fixtures squads photos lineups stats guests"; else jobs="$INPUT_JOB"; fi
+            if [ "$INPUT_JOB" = "all" ]; then jobs="fixtures squads values photos lineups stats guests"; else jobs="$INPUT_JOB"; fi
           elif [ "$SCHEDULE" = "30 5 * * *" ]; then
-            jobs="fixtures squads photos"
+            jobs="fixtures squads values photos"
           elif [ "$SCHEDULE" = "45 */2 * * *" ]; then
             jobs="guests"
           else

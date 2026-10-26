@@ -39,10 +39,16 @@ const LINEUP_TAG: Record<MatchPlayer["lineupStatus"], string | null> = {
   not_in_squad: "Not in squad",
 };
 
+/** "€70m" / "€800k" */
+export function formatValue(v: number) {
+  return v >= 1_000_000 ? `€${Math.round(v / 100_000) / 10}m` : `€${Math.round(v / 1000)}k`;
+}
+
 function formLine(p: MatchPlayer) {
   const f = p.form;
-  if (!f || f.matches === 0) return "No recent data";
-  const bits = [`${f.apps}/${f.matches} apps`];
+  const value = p.marketValue ? `${formatValue(p.marketValue)} · ` : "";
+  if (!f || f.matches === 0) return `${value}No recent data`;
+  const bits = [`${value}${f.apps}/${f.matches} apps`];
   if (f.goals || f.assists) bits.push(`${f.goals}G ${f.assists}A`);
   if (f.avgRating != null) bits.push(`★ ${f.avgRating.toFixed(1)}`);
   return bits.join(" · ");

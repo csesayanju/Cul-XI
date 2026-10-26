@@ -10,6 +10,7 @@ import type {
   HlLineups,
   HlMatch,
   HlMatchDetail,
+  HlMarketValue,
   HlMatchState,
   HlPosition,
   HlTeamLineup,
@@ -169,6 +170,10 @@ function flattenLineup(lineup: HlTeamLineup["initialLineup"]): HlLineupPlayer[] 
 export const hasLineups = (l: HlLineups | null | undefined): boolean =>
   !!l && [l.homeTeam, l.awayTeam].some((t) => t && flattenLineup(t.initialLineup).length > 0);
 
+/** Highlightly occasionally lists players without an id (e.g. in older line-ups): skip them. */
+const hasPlayerId = (p: { id?: number | null }): p is { id: number } =>
+  typeof p.id === "number" && Number.isFinite(p.id) && p.id > 0;
+
 export function mapLineups(lineups: HlLineups): LineupEntry[] {
   return [lineups.homeTeam, lineups.awayTeam].flatMap((team) => {
     if (!team) return [];
@@ -184,8 +189,8 @@ export function mapLineups(lineups: HlLineups): LineupEntry[] {
         lineup_status: status,
       });
     return [
-      ...flattenLineup(team.initialLineup).map(entry("starting")),
-      ...(team.substitutes ?? []).map(entry("bench")),
+      ...flattenLineup(team.initialLineup).filter(hasPlayerId).map(entry("starting")),
+      ...(team.substitutes ?? []).filter(hasPlayerId).map(entry("bench")),
     ];
   });
 }
@@ -237,7 +242,7 @@ export function recentFormFromBoxScores(
 
   for (const boxScore of boxScoresNewestFirst) {
     const side = boxScore.find((t) => t.team.id === teamId);
-    for (const p of side?.players ?? []) {
+    for (const p of (side?.players ?? []).filter(hasPlayerId)) {
       const entry = out.get(p.id) ?? {
         form: { ...EMPTY_FORM, matches },
         photoUrl: null,
@@ -331,6 +336,23 @@ export function playerPoolFromLineups(
   return [...pool.values()];
 }
 
+const parseDmy = (d: string | null | undefined): number => {
+  const m = d?.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  return m ? Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : NaN;
+};
+
+/** Most recent market value in the history (by recorded date), or null. */
+export function latestMarketValue(history: HlMarketValue[] | null | undefined): number | null {
+  let best: { at: number; value: number } | null = null;
+  for (const h of history ?? []) {
+    if (h.value == null || h.value <= 0) continue;
+    const at = parseDmy(h.recordedDate);
+    if (!Number.isFinite(at)) continue;
+    if (!best || at > best.at) best = { at, value: h.value };
+  }
+  return best?.value ?? null;
+}
+
 /** The `n` most recent finished matches, newest first. */
 export function recentFinished(matches: HlMatch[], n: number): HlMatch[] {
   return matches
@@ -368,7 +390,7 @@ export function mapBoxScore(
 
   return boxScore.flatMap(({ team, players }) => {
     const teamConceded = team.id === ctx.barcaTeamId ? ctx.opponentGoals : ctx.barcaGoals;
-    return players.map((p) => {
+    return players.filter(hasPlayerId).map((p) => {
       const s = boxStats(p);
       const minutes = p.minutesPlayed ?? 0;
       const played = minutes > 0;

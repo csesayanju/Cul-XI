@@ -64,6 +64,7 @@ export interface EditablePlayer {
   teamName: string;
   position: string;
   price: number;
+  priceLocked: boolean;
   stats: (PlayerMatchStats & { source: "api" | "manual" }) | null;
 }
 
@@ -115,18 +116,44 @@ export function StatsEditor({ matchId, players }: { matchId: number; players: Ed
         <form key={player.id} action={action} className="space-y-3">
           <input type="hidden" name="matchId" value={matchId} />
           <input type="hidden" name="playerId" value={player.id} />
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <label className="text-sm">
-              Price
-              <Input
-                name="price"
-                type="number"
-                step="0.5"
-                min="0.5"
-                max="20"
-                defaultValue={player.price}
+          <fieldset className="space-y-2 rounded-xl border border-line p-3">
+            <legend className="px-1 text-sm font-semibold">Price</legend>
+            <div className="flex items-end gap-2">
+              <label className="flex-1 text-sm">
+                Credits
+                <Input
+                  name="price"
+                  type="number"
+                  step="0.5"
+                  min="0.5"
+                  max="20"
+                  defaultValue={player.price}
+                />
+              </label>
+              <Button
+                type="submit"
+                name="intent"
+                value="price"
+                variant="secondary"
+                disabled={pending}
+              >
+                Save price
+              </Button>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="priceLocked"
+                defaultChecked={player.priceLocked}
+                className="size-5"
               />
+              Set price manually (untick to go back to automatic, form-based pricing)
             </label>
+            <p className="text-xs text-ink-muted">
+              Price changes apply to teams picked afterwards; saved teams keep the price they paid.
+            </p>
+          </fieldset>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {NUMBER_FIELDS.map((f) => (
               <label key={f.name} className="text-sm">
                 {f.label}
@@ -150,12 +177,8 @@ export function StatsEditor({ matchId, players }: { matchId: number; players: Ed
               Clean sheet
             </label>
           </div>
-          <p className="text-xs text-ink-muted">
-            Price changes apply to teams picked after the change; saved teams keep the price they
-            paid.
-          </p>
-          <Button type="submit" disabled={pending} className="w-full">
-            {pending ? "Saving…" : "Save override & recalculate"}
+          <Button type="submit" name="intent" value="stats" disabled={pending} className="w-full">
+            {pending ? "Saving…" : "Save stats override & recalculate"}
           </Button>
           {state && <Notice tone={state.ok ? "success" : "error"}>{state.message}</Notice>}
         </form>

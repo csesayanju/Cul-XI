@@ -46,6 +46,7 @@ export default async function AdminPage({
           teamName: p.teamName,
           position: p.position,
           price: p.price,
+          priceLocked: p.priceLocked,
           stats: row ? { ...toStats(row), source: row.source as "api" | "manual" } : null,
         };
       })

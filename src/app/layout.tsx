@@ -43,7 +43,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {user && (
               <nav className="flex items-center gap-3 overflow-x-auto text-sm font-medium">
                 {nav.map((item) => (
-                  <Link key={item.href} href={item.href} className="opacity-90 hover:opacity-100">
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    // Fully prefetch the main tabs (cached for 60s via staleTimes) so taps are instant.
+                    prefetch={item.href !== "/admin"}
+                    className="opacity-90 hover:opacity-100"
+                  >
                     {item.label}
                   </Link>
                 ))}

@@ -169,7 +169,11 @@ export default function RulesPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-bold">Player prices</h2>
         <Card className="space-y-3 text-sm">
-          <p>Prices work like Dream11: most players cost 7.5–11 credits. Each price blends:</p>
+          <p>
+            Prices work like Dream11. <b>Position sets the range</b>: goalkeepers and defenders are
+            cheaper, midfielders and strikers cost more (see the ranges below). Within that range,
+            each price blends:
+          </p>
           <ul className="list-disc space-y-1 pl-5">
             <li>
               <b>50% status</b> — the player&apos;s market value, so stars stay expensive through a

@@ -1,9 +1,10 @@
 import type { Position } from "./types";
 
 /**
- * Player prices (Dream11-style scale: roughly 7.5–11 credits, budget 100 for 11).
+ * Player prices (Dream11-style scale: roughly 7–11.5 credits, budget 100 for 11).
  *
- * price = band(position) × score, where score blends four signals:
+ * price = band(position) × score. Position sets the band (GK/DEF low, MID/FWD high); the
+ * score places the player within it by blending four signals:
  *  - 50% status       — latest market value on a log scale (≈€1m → 0, €150m+ → 1), so a star
  *                       in a quiet patch stays a star;
  *  - 25% season       — current-season minutes share, goals + assists per game, clean sheets;
@@ -58,11 +59,16 @@ export interface PriceInputs {
   last?: PlayerForm | null;
 }
 
+/**
+ * Position sets the price range (Dream11-style): goalkeepers and defenders are cheaper,
+ * midfielders and strikers — who score more fantasy points — cost more. The player's
+ * score then places them within their position's range.
+ */
 export const PRICE_BANDS: Record<Position, { min: number; max: number }> = {
-  GK: { min: 7.5, max: 9.5 },
-  DEF: { min: 7.5, max: 10.0 },
-  MID: { min: 7.5, max: 11.0 },
-  FWD: { min: 8.0, max: 11.0 },
+  GK: { min: 7.0, max: 9.0 },
+  DEF: { min: 7.0, max: 9.5 },
+  MID: { min: 8.0, max: 11.0 },
+  FWD: { min: 8.5, max: 11.5 },
 };
 
 export const PRICE_WEIGHTS = { status: 0.5, season: 0.25, month: 0.15, last: 0.1 } as const;

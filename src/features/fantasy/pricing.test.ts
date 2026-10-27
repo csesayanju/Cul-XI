@@ -148,6 +148,44 @@ describe("priceFor", () => {
   });
 });
 
+describe("position", () => {
+  const same: PriceInputs = {
+    form: starter,
+    last: starter,
+    marketValue: 40 * M,
+    season: season({ games: 12, minutes: 950, goals: 2, assists: 2, cleanSheets: 4 }),
+  };
+
+  it("prices strikers and midfielders above defenders and goalkeepers for the same profile", () => {
+    const p = (pos: Position) => priceFor(pos, same);
+    expect(p("FWD")).toBeGreaterThanOrEqual(p("MID"));
+    expect(p("MID")).toBeGreaterThan(p("DEF"));
+    expect(p("DEF")).toBeGreaterThanOrEqual(p("GK"));
+  });
+
+  it("keeps an elite defender below an elite striker", () => {
+    const elite: PriceInputs = {
+      form: hot,
+      last: hot,
+      marketValue: 120 * M,
+      season: season({ games: 12, minutes: 1080, goals: 8, assists: 6, cleanSheets: 7 }),
+    };
+    expect(priceFor("DEF", elite)).toBeLessThan(priceFor("FWD", elite));
+    expect(priceFor("GK", elite)).toBeLessThanOrEqual(PRICE_BANDS.GK.max);
+  });
+
+  it("makes attacking formations cost more than defensive ones with similar players", () => {
+    const xi = (counts: Record<Position, number>) =>
+      (Object.entries(counts) as [Position, number][]).reduce(
+        (sum, [pos, n]) => sum + n * priceFor(pos, same),
+        0,
+      );
+    expect(xi({ GK: 1, DEF: 3, MID: 4, FWD: 3 })).toBeGreaterThan(
+      xi({ GK: 1, DEF: 5, MID: 4, FWD: 1 }),
+    );
+  });
+});
+
 describe("budget balance (100 credits for 11, max 7 from one team)", () => {
   const shape: Position[] = [
     "GK",

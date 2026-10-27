@@ -176,17 +176,21 @@ export default function RulesPage() {
           </p>
           <ul className="list-disc space-y-1 pl-5">
             <li>
-              <b>50% status</b> — the player&apos;s market value, so stars stay expensive through a
+              <b>30% fantasy points</b> — the Culé XI points the player has been scoring over their
+              team&apos;s last 5 matches (a missed match counts as 0);
+            </li>
+            <li>
+              <b>35% status</b> — the player&apos;s market value, so stars stay expensive through a
               quiet patch;
             </li>
             <li>
-              <b>25% this season</b> — share of minutes, goals and assists per game, clean sheets;
+              <b>17.5% this season</b> — share of minutes, goals and assists per game, clean sheets;
             </li>
             <li>
-              <b>15% last 30 days</b> — minutes, match ratings, goals and assists;
+              <b>10.5% last 30 days</b> — minutes, match ratings, goals and assists;
             </li>
             <li>
-              <b>10% last match</b>.
+              <b>7% last match</b>.
             </li>
           </ul>
           <p>

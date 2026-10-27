@@ -9,7 +9,13 @@ import {
 } from "@/lib/highlightly/mappers";
 
 import type { Injury } from "../availability";
-import { EMPTY_FORM, priceFor, type PlayerForm, type SeasonStats } from "../pricing";
+import {
+  EMPTY_FORM,
+  priceFor,
+  type FantasyForm,
+  type PlayerForm,
+  type SeasonStats,
+} from "../pricing";
 import type { Position } from "../types";
 import { check, DAY, HOUR, type SyncContext, type SyncResult } from "./context";
 
@@ -33,6 +39,7 @@ interface PlayerRecord {
   price_locked: boolean;
   form: Partial<PlayerForm> | null;
   last_match: PlayerForm | null;
+  fantasy_form: FantasyForm | null;
   season_stats: SeasonStats | null;
   market_value: number | null;
   injury: Injury | null;
@@ -48,7 +55,7 @@ type Task = {
 };
 
 const PLAYER_COLUMNS =
-  "id, api_player_id, team_api_id, position, price_locked, form, last_match, season_stats, market_value, injury, market_value_checked_at, season_stats_checked_at";
+  "id, api_player_id, team_api_id, position, price_locked, form, last_match, fantasy_form, season_stats, market_value, injury, market_value_checked_at, season_stats_checked_at";
 
 const age = (iso: string | null, now: Date) =>
   iso ? now.getTime() - Date.parse(iso) : Number.POSITIVE_INFINITY;
@@ -223,6 +230,7 @@ export async function syncProfiles(
     const price = priceFor(p.position, {
       form: { ...EMPTY_FORM, ...(p.form ?? {}) } as PlayerForm,
       last: p.last_match,
+      fantasy: p.fantasy_form,
       season: seasonStats,
       marketValue: p.market_value == null ? null : Number(p.market_value),
     });

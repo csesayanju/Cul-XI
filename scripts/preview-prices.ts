@@ -7,6 +7,7 @@ import { config } from "dotenv";
 import {
   EMPTY_FORM,
   priceFor,
+  type FantasyForm,
   type PlayerForm,
   type SeasonStats,
 } from "../src/features/fantasy/pricing";
@@ -24,6 +25,7 @@ interface Row {
   form: Partial<PlayerForm> | null;
   last_match: PlayerForm | null;
   season_stats: SeasonStats | null;
+  fantasy_form: FantasyForm | null;
 }
 
 async function main() {
@@ -41,7 +43,7 @@ async function main() {
 
   const rows = (await (
     await fetch(
-      `${url}/rest/v1/match_players?select=players(name,position,team_name,price,price_locked,market_value,form,last_match,season_stats)&match_id=eq.${match.id}`,
+      `${url}/rest/v1/match_players?select=players(name,position,team_name,price,price_locked,market_value,form,last_match,season_stats,fantasy_form)&match_id=eq.${match.id}`,
       { headers: h },
     )
   ).json()) as { players: Row }[];
@@ -55,6 +57,7 @@ async function main() {
             form: { ...EMPTY_FORM, ...(p.form ?? {}) } as PlayerForm,
             last: p.last_match,
             season: p.season_stats,
+            fantasy: p.fantasy_form,
             marketValue: p.market_value == null ? null : Number(p.market_value),
           }),
     }))
@@ -67,8 +70,10 @@ async function main() {
       : "-";
     console.log(`\n${pos} (${range})`);
     for (const p of list.slice(0, 6)) {
+      const f = p.fantasy_form;
+      const pts = f && f.matches ? ` · ${(f.points / f.matches).toFixed(1)} pts/g` : "";
       console.log(
-        `  ${String(p.price).padStart(4)} -> ${String(p.next).padStart(4)}  ${p.name} (${p.team_name})`,
+        `  ${String(p.price).padStart(4)} -> ${String(p.next).padStart(4)}  ${p.name} (${p.team_name})${pts}`,
       );
     }
   }

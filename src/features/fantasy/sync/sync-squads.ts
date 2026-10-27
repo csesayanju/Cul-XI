@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  fantasyFormFromBoxScores,
   formWindows,
   hasLineups,
   playerPoolFromLineups,
@@ -44,13 +45,21 @@ async function teamPool({ api, now }: SyncContext, teamId: number): Promise<Play
     const { data: b } = await api.boxScore(m.id, {
       shouldCache: (d) => d.some((t) => t.players.length > 0),
     });
-    if (b.some((t) => t.players.length > 0)) boxScores.push({ date: m.date, boxScore: b });
+    if (b.some((t) => t.players.length > 0))
+      boxScores.push({ date: m.date, boxScore: b, match: m });
   }
 
   // Pool from all recent line-ups; prices from the last-30-days and last-match windows.
   const { month, last } = formWindows(boxScores, teamId, now);
   const monthMatches = [...month.values()][0]?.form.matches ?? 0;
-  return playerPoolFromLineups(lineups, teamId, month, monthMatches, last);
+  return playerPoolFromLineups(
+    lineups,
+    teamId,
+    month,
+    monthMatches,
+    last,
+    fantasyFormFromBoxScores(boxScores, teamId),
+  );
 }
 
 /**

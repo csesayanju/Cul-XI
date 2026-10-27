@@ -47,6 +47,7 @@ export function formatValue(v: number) {
 /** Compact line for the picker list: value · season G/A · 30-day rating. */
 function formLine(p: MatchPlayer) {
   const bits: string[] = [];
+  if (p.fantasy && p.fantasy.matches > 0) bits.push(`${perMatch(p.fantasy)} pts/g`);
   if (p.marketValue) bits.push(formatValue(p.marketValue));
   if (p.season && p.season.games > 0) {
     bits.push(`${p.season.games} games ${p.season.goals}G ${p.season.assists}A`);
@@ -60,9 +61,19 @@ function formLine(p: MatchPlayer) {
   return bits.length ? bits.join(" · ") : "No recent data";
 }
 
+/** Culé XI points per team match, one decimal. */
+const perMatch = (f: { matches: number; points: number }) =>
+  (Math.round((f.points / f.matches) * 10) / 10).toFixed(1);
+
 /** Detailed stat rows for the player card. */
 function statRows(p: MatchPlayer): [string, string][] {
   const rows: [string, string][] = [];
+  if (p.fantasy && p.fantasy.matches > 0) {
+    rows.push([
+      "Fantasy points",
+      `${p.fantasy.points} in last ${p.fantasy.matches} (${perMatch(p.fantasy)} per match)`,
+    ]);
+  }
   if (p.marketValue) rows.push(["Market value", formatValue(p.marketValue)]);
   const s = p.season;
   if (s && s.games > 0) {

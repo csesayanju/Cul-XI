@@ -4,15 +4,17 @@ import type { Position } from "./types";
  * Player prices (Dream11-style scale: roughly 7–11.5 credits, budget 100 for 11).
  *
  * price = band(position) × score. Position sets the band (GK/DEF low, MID/FWD high); the
- * score places the player within it by blending four signals:
- *  - 50% status       — latest market value on a log scale (≈€1m → 0, €150m+ → 1), so a star
- *                       in a quiet patch stays a star;
- *  - 25% season       — current-season minutes share, goals + assists per game, clean sheets;
- *  - 15% last 30 days — minutes, match ratings, goal involvement (up to 5 matches);
- *  - 10% last match   — the same, for the team's most recent match.
- * Missing signals: no season stats → its weight is shared out among the others (so form
- * can't dominate); no last match → the 30-day form stands in; no market value → a typical
- * squad player's status. Admin-set prices are locked and never re-priced.
+ * score places the player within it by blending five signals:
+ *  - 30%   fantasy points — average Culé XI points per team match over the last 5 matches
+ *                           (a missed match counts as 0);
+ *  - 35%   status         — latest market value on a log scale (≈€1m → 0, €150m+ → 1), so a
+ *                           star in a quiet patch stays a star;
+ *  - 17.5% season         — current-season minutes share, goals + assists per game, clean sheets;
+ *  - 10.5% last 30 days   — minutes, match ratings, goal involvement (up to 5 matches);
+ *  - 7%    last match     — the same, for the team's most recent match.
+ * Missing signals: no season stats or too few matches for fantasy points → that weight is
+ * shared out among the others; no last match → the 30-day form stands in; no market value →
+ * a typical squad player's status. Admin-set prices are locked and never re-priced.
  */
 
 /** Recent-form summary (stored in `players.form` for 30 days, `players.last_match` for 1 match). */
@@ -51,8 +53,16 @@ export interface SeasonStats {
   teamGames: number;
 }
 
+/** Culé XI points over the team's recent matches (stored in `players.fantasy_form`). */
+export interface FantasyForm {
+  /** Team matches covered (a match the player missed counts, with 0 points). */
+  matches: number;
+  points: number;
+}
+
 export interface PriceInputs {
   marketValue?: number | null;
+  fantasy?: FantasyForm | null;
   season?: SeasonStats | null;
   /** Last 30 days. */
   form?: PlayerForm | null;
@@ -71,7 +81,21 @@ export const PRICE_BANDS: Record<Position, { min: number; max: number }> = {
   FWD: { min: 8.5, max: 11.5 },
 };
 
-export const PRICE_WEIGHTS = { status: 0.5, season: 0.25, month: 0.15, last: 0.1 } as const;
+export const PRICE_WEIGHTS = {
+  fantasy: 0.3,
+  status: 0.35,
+  season: 0.175,
+  month: 0.105,
+  last: 0.07,
+} as const;
+
+/**
+ * Points per team match that count as "maxed out". Calibrated on real 2026/27 data: the best
+ * performers average 5–6 per match, the top 10% ~3.8, a typical regular ~2.4.
+ */
+export const FANTASY_POINTS_CAP = 6;
+/** Fewer matches than this and fantasy points are ignored (too small a sample). */
+export const FANTASY_MIN_MATCHES = 2;
 
 /** Status used when the market value is unknown (≈ a €5m squad player). */
 export const UNKNOWN_STATUS = 0.32;
@@ -139,6 +163,12 @@ export function seasonScore(position: Position, s: SeasonStats | null | undefine
   return clamp01(w.availability * availability + w.threat * threat + w.defence * defence);
 }
 
+/** 0–1 score from Culé XI points per team match, or null when the sample is too small. */
+export function fantasyScore(f: FantasyForm | null | undefined): number | null {
+  if (!f || f.matches < FANTASY_MIN_MATCHES) return null;
+  return clamp01(f.points / f.matches / FANTASY_POINTS_CAP);
+}
+
 /** Market value (euros) mapped to 0–1 on a log scale: €1m or less = 0, €150m or more = 1. */
 export function statusScore(marketValue: number | null | undefined): number {
   if (marketValue == null || marketValue <= 0) return UNKNOWN_STATUS;
@@ -153,12 +183,14 @@ export function priceScore(position: Position, inputs: PriceInputs = {}): number
   const month = formScore(position, inputs.form ?? EMPTY_FORM);
   const season = seasonScore(position, inputs.season);
   const last = inputs.last ? formScore(position, inputs.last) : month;
+  const fantasy = fantasyScore(inputs.fantasy);
   const w = PRICE_WEIGHTS;
   const parts: [number, number][] = [
     [w.status, statusScore(inputs.marketValue)],
     [w.month, month],
     [w.last, last],
     ...(season == null ? [] : ([[w.season, season]] as [number, number][])),
+    ...(fantasy == null ? [] : ([[w.fantasy, fantasy]] as [number, number][])),
   ];
   const totalWeight = parts.reduce((sum, [weight]) => sum + weight, 0);
   return clamp01(parts.reduce((sum, [weight, score]) => sum + weight * score, 0) / totalWeight);

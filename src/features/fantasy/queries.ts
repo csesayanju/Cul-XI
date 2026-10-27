@@ -3,7 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { injuryLabel, isUnavailable, type Injury, type InjuryOverride } from "./availability";
-import { EMPTY_FORM, type PlayerForm, type SeasonStats } from "./pricing";
+import { EMPTY_FORM, type FantasyForm, type PlayerForm, type SeasonStats } from "./pricing";
 import type { Competition, Position } from "./types";
 
 /** Read helpers used by pages. They run with the user's client, so RLS applies. */
@@ -72,6 +72,8 @@ export interface MatchPlayer {
   priceLocked: boolean;
   season: SeasonStats | null;
   lastMatch: PlayerForm | null;
+  /** Culé XI points over the team's recent matches. */
+  fantasy: FantasyForm | null;
   injury: Injury | null;
   injuryOverride: InjuryOverride;
   /** Can't be picked (injured per the report, or marked unavailable by an admin). */
@@ -88,7 +90,7 @@ export async function listMatchPlayers(
   const { data } = await db
     .from("match_players")
     .select(
-      "lineup_status, players(id, name, position, team_api_id, team_name, price, shirt_number, photo_url, photo_credit, photo_page_url, photo_locked, form, market_value, price_locked, season_stats, last_match, injury, injury_override)",
+      "lineup_status, players(id, name, position, team_api_id, team_name, price, shirt_number, photo_url, photo_credit, photo_page_url, photo_locked, form, market_value, price_locked, season_stats, last_match, fantasy_form, injury, injury_override)",
     )
     .eq("match_id", matchId)
     .eq("is_available", true);
@@ -112,6 +114,7 @@ export async function listMatchPlayers(
       price_locked: boolean;
       season_stats: SeasonStats | null;
       last_match: PlayerForm | null;
+      fantasy_form: FantasyForm | null;
       injury: Injury | null;
       injury_override: InjuryOverride;
     } | null;
@@ -138,6 +141,7 @@ export async function listMatchPlayers(
       priceLocked: p!.price_locked,
       season: p!.season_stats,
       lastMatch: p!.last_match,
+      fantasy: p!.fantasy_form,
       injury: p!.injury,
       injuryOverride: p!.injury_override,
       unavailable: isUnavailable(p!.injury, p!.injury_override, now),

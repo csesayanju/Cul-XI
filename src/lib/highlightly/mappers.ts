@@ -1,5 +1,11 @@
 import type { Injury } from "@/features/fantasy/availability";
-import { EMPTY_FORM, type PlayerForm, type SeasonStats } from "@/features/fantasy/pricing";
+import {
+  EMPTY_FORM,
+  type FantasyForm,
+  type PlayerForm,
+  type SeasonStats,
+} from "@/features/fantasy/pricing";
+import { calculatePlayerPoints } from "@/features/fantasy/scoring/calculate";
 import type { Competition, PlayerMatchStats, Position } from "@/features/fantasy/types";
 
 import type {
@@ -157,11 +163,13 @@ export interface PlayerRow {
   form?: PlayerForm;
   /** The team's most recent match (matches = 1). */
   last_match?: PlayerForm;
+  /** Culé XI points over the team's recent matches. */
+  fantasy_form?: FantasyForm;
 }
 
 export interface LineupEntry extends Omit<
   PlayerRow,
-  "position" | "photo_url" | "form" | "full_name" | "last_match"
+  "position" | "photo_url" | "form" | "full_name" | "last_match" | "fantasy_form"
 > {
   position: Position | null;
   lineup_status: "starting" | "bench";
@@ -212,6 +220,7 @@ export const toPlayerRow = (e: LineupEntry | PlayerRow): PlayerRow => ({
   ...("full_name" in e && e.full_name ? { full_name: e.full_name } : {}),
   ...("form" in e && e.form ? { form: e.form } : {}),
   ...("last_match" in e && e.last_match ? { last_match: e.last_match } : {}),
+  ...("fantasy_form" in e && e.fantasy_form ? { fantasy_form: e.fantasy_form } : {}),
 });
 
 /** Box-score stats come back as an object from the live API but an array in the spec: accept both. */
@@ -304,7 +313,13 @@ export function playerPoolFromLineups(
   matchesLookedAt = lineupsNewestFirst.length,
   /** Form in the team's most recent match (see formWindows); omitted = unknown. */
   last?: Map<number, RecentPlayer>,
+  /** Culé XI points over recent matches (see fantasyFormFromBoxScores); omitted = unknown. */
+  fantasy?: { byPlayer: Map<number, FantasyForm>; matches: number },
 ): PlayerRow[] {
+  const fantasyOf = (id: number): FantasyForm | undefined =>
+    fantasy && fantasy.matches > 0
+      ? (fantasy.byPlayer.get(id) ?? { matches: fantasy.matches, points: 0 })
+      : undefined;
   const lastOf = (id: number): PlayerForm | undefined =>
     last && last.size > 0 ? (last.get(id)?.form ?? { ...EMPTY_FORM, matches: 1 }) : undefined;
   const pool = new Map<number, PlayerRow>();
@@ -321,6 +336,7 @@ export function playerPoolFromLineups(
           full_name: r?.fullName ?? null,
           form: r?.form ?? { ...EMPTY_FORM, matches: matchesLookedAt },
           last_match: lastOf(e.api_player_id),
+          fantasy_form: fantasyOf(e.api_player_id),
         }),
       );
     }
@@ -342,6 +358,7 @@ export function playerPoolFromLineups(
         full_name: r.fullName,
         form: r.form,
         last_match: lastOf(id),
+        fantasy_form: fantasyOf(id),
       }),
     );
   }
@@ -420,6 +437,38 @@ export interface DatedBoxScore {
   /** ISO kickoff time of the match. */
   date: string;
   boxScore: HlBoxScoreTeam[];
+  /** The match itself (teams + final score), needed to score clean sheets / goals conceded. */
+  match?: HlMatch;
+}
+
+/**
+ * Culé XI points each of a team's players scored over its recent matches, using the app's
+ * own scoring rules on the box scores. Every match counts for every player (a missed match
+ * scores 0), so availability matters. Matches without a final score are skipped.
+ * Penalties saved and own goals aren't in box scores, so they don't count here.
+ */
+export function fantasyFormFromBoxScores(
+  recent: DatedBoxScore[],
+  teamId: number,
+): { byPlayer: Map<number, FantasyForm>; matches: number } {
+  const scored = recent.filter((r) => r.match && parseScore(r.match.state.score?.current));
+  const byPlayer = new Map<number, FantasyForm>();
+  for (const { boxScore, match } of scored) {
+    const score = parseScore(match!.state.score?.current)!;
+    const isHome = match!.homeTeam.id === teamId;
+    const entries = mapBoxScore(boxScore, {
+      barcaTeamId: teamId,
+      barcaGoals: isHome ? score.home : score.away,
+      opponentGoals: isHome ? score.away : score.home,
+    }).filter((e) => e.team_api_id === teamId);
+    for (const e of entries) {
+      const points = calculatePlayerPoints(e.stats, e.position ?? "MID").points;
+      const prev = byPlayer.get(e.api_player_id);
+      byPlayer.set(e.api_player_id, { matches: 0, points: (prev?.points ?? 0) + points });
+    }
+  }
+  for (const f of byPlayer.values()) f.matches = scored.length;
+  return { byPlayer, matches: scored.length };
 }
 
 /**

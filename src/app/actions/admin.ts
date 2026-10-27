@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   EMPTY_FORM,
   priceFor,
+  type FantasyForm,
   type PlayerForm,
   type SeasonStats,
 } from "@/features/fantasy/pricing";
@@ -182,7 +183,7 @@ export async function saveManualStats(
       } else {
         const { data: player, error } = await supabase
           .from("players")
-          .select("position, form, last_match, season_stats, market_value")
+          .select("position, form, last_match, fantasy_form, season_stats, market_value")
           .eq("id", playerId)
           .single();
         if (error || !player) return { ok: false, message: "Player not found." };
@@ -190,6 +191,7 @@ export async function saveManualStats(
           price: priceFor(player.position as Position, {
             form: { ...EMPTY_FORM, ...(player.form as Partial<PlayerForm>) },
             last: player.last_match as PlayerForm | null,
+            fantasy: player.fantasy_form as FantasyForm | null,
             season: player.season_stats as SeasonStats | null,
             marketValue: player.market_value == null ? null : Number(player.market_value),
           }),

@@ -9,6 +9,7 @@ import {
   competitionFor,
   hasLineups,
   currentInjury,
+  fantasyFormFromBoxScores,
   formWindows,
   isFinished,
   latestMarketValue,
@@ -336,6 +337,56 @@ describe("formWindows", () => {
       now,
     );
     expect(month.get(2200000013)!.form.matches).toBe(2);
+  });
+});
+
+describe("fantasyFormFromBoxScores", () => {
+  const box = boxScoreSample as HlBoxScoreTeam[];
+  const match = (score: string): HlMatch => ({
+    ...(matchesSample.data[0] as HlMatch),
+    state: { description: "Finished", clock: 90, score: { current: score, penalties: null } },
+  });
+
+  it("scores each player with the Culé XI rules and sums over the matches", () => {
+    // Barça (home) won 2-1 in both matches. I. Sala: 90' (2) + goal FWD (4) + missed pen (-2) = 4 per match.
+    const { byPlayer, matches } = fantasyFormFromBoxScores(
+      [
+        { date: "2026-10-18T19:00:00Z", boxScore: box, match: match("2 - 1") },
+        { date: "2026-10-25T19:00:00Z", boxScore: box, match: match("2 - 1") },
+      ],
+      BARCA,
+    );
+    expect(matches).toBe(2);
+    expect(byPlayer.get(2200000013)).toEqual({ matches: 2, points: 8 });
+    // Unused sub scores 0; opponents aren't included.
+    expect(byPlayer.get(2200000011)).toEqual({ matches: 2, points: 0 });
+    expect(byPlayer.has(2210000001)).toBe(false);
+  });
+
+  it("awards clean sheets from the final score", () => {
+    const shutout = fantasyFormFromBoxScores(
+      [{ date: "2026-10-18T19:00:00Z", boxScore: box, match: match("2 - 0") }],
+      BARCA,
+    );
+    const conceded = fantasyFormFromBoxScores(
+      [{ date: "2026-10-18T19:00:00Z", boxScore: box, match: match("2 - 1") }],
+      BARCA,
+    );
+    // M. Ferrer (GK, 90', 4 saves): clean sheet is worth +4 on top.
+    expect(
+      shutout.byPlayer.get(2200000001)!.points - conceded.byPlayer.get(2200000001)!.points,
+    ).toBe(4);
+  });
+
+  it("skips matches without a final score", () => {
+    const { matches } = fantasyFormFromBoxScores(
+      [
+        { date: "2026-10-18T19:00:00Z", boxScore: box, match: match("") },
+        { date: "2026-10-19T19:00:00Z", boxScore: box },
+      ],
+      BARCA,
+    );
+    expect(matches).toBe(0);
   });
 });
 

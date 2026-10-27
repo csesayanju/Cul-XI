@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   EMPTY_FORM,
+  fantasyScore,
   formScore,
   priceFor,
   priceScore,
@@ -145,6 +146,36 @@ describe("priceFor", () => {
   it("ignores goal involvement for goalkeepers in form", () => {
     const base = form({ apps: 5, starts: 5, minutes: 450, avgRating: 7.0 });
     expect(formScore("GK", { ...base, assists: 3 })).toBe(formScore("GK", base));
+  });
+});
+
+describe("fantasy points", () => {
+  it("scores points per team match against the cap, ignoring tiny samples", () => {
+    expect(fantasyScore({ matches: 5, points: 30 })).toBe(1);
+    expect(fantasyScore({ matches: 5, points: 70 })).toBe(1);
+    expect(fantasyScore({ matches: 5, points: 0 })).toBe(0);
+    expect(fantasyScore({ matches: 5, points: 15 })).toBeCloseTo(0.5);
+    expect(fantasyScore({ matches: 1, points: 12 })).toBeNull();
+    expect(fantasyScore(null)).toBeNull();
+  });
+
+  it("carries 30% of the price score", () => {
+    const base: PriceInputs = {
+      form: starter,
+      last: starter,
+      marketValue: 30 * M,
+      season: season({ games: 10, minutes: 800, goals: 2 }),
+    };
+    const top = priceScore("MID", { ...base, fantasy: { matches: 5, points: 50 } });
+    const none = priceScore("MID", { ...base, fantasy: { matches: 5, points: 0 } });
+    expect(top - none).toBeCloseTo(0.3);
+  });
+
+  it("prices a proven points-scorer above an equal player who hasn't been scoring", () => {
+    const base: PriceInputs = { form: starter, last: starter, marketValue: 30 * M };
+    expect(priceFor("FWD", { ...base, fantasy: { matches: 5, points: 32 } })).toBeGreaterThan(
+      priceFor("FWD", { ...base, fantasy: { matches: 5, points: 6 } }),
+    );
   });
 });
 

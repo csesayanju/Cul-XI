@@ -2,7 +2,13 @@ import "server-only";
 
 import { toPlayerRow, type PlayerRow } from "@/lib/highlightly/mappers";
 
-import { EMPTY_FORM, priceFor, type PlayerForm, type SeasonStats } from "../pricing";
+import {
+  EMPTY_FORM,
+  priceFor,
+  type FantasyForm,
+  type PlayerForm,
+  type SeasonStats,
+} from "../pricing";
 import { check, type SyncContext } from "./context";
 
 interface ExistingPlayer {
@@ -14,6 +20,7 @@ interface ExistingPlayer {
   market_value: number | null;
   season_stats: SeasonStats | null;
   last_match: PlayerForm | null;
+  fantasy_form: FantasyForm | null;
   form: PlayerForm | Record<string, never>;
 }
 
@@ -38,7 +45,7 @@ export async function upsertPlayers(
     await db
       .from("players")
       .select(
-        "api_player_id, price, price_locked, photo_url, full_name, market_value, season_stats, last_match, form",
+        "api_player_id, price, price_locked, photo_url, full_name, market_value, season_stats, last_match, fantasy_form, form",
       )
       .in(
         "api_player_id",
@@ -53,6 +60,7 @@ export async function upsertPlayers(
     const old = byId.get(r.api_player_id);
     const form = row.form ?? (hasForm(old?.form) ? old.form : { ...EMPTY_FORM });
     const lastMatch = row.last_match ?? old?.last_match ?? null;
+    const fantasyForm = row.fantasy_form ?? old?.fantasy_form ?? null;
     return {
       api_player_id: row.api_player_id,
       name: row.name,
@@ -65,11 +73,13 @@ export async function upsertPlayers(
       full_name: row.full_name ?? old?.full_name ?? null,
       form,
       last_match: lastMatch,
+      fantasy_form: fantasyForm,
       price: old?.price_locked
         ? Number(old.price)
         : priceFor(row.position, {
             form,
             last: lastMatch,
+            fantasy: fantasyForm,
             season: old?.season_stats ?? null,
             marketValue: old?.market_value == null ? null : Number(old.market_value),
           }),

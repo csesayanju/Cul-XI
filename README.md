@@ -221,7 +221,7 @@ src/
       scoring/                # rules.ts, pure scoring engine (+ tests)
       validation/             # team validation (+ tests)
       sync/                   # fixtures / squads / lineups / stats sync, points recalculation
-    trivia/                   # reserved for the trivia module
+    trivia/                   # Culé Ten daily game: rules, lists, matching, server
   lib/
     highlightly/              # client, types, mappers, __fixtures__ (mock responses)
     wikipedia/                # player photo lookup (Wikimedia Commons) with attribution
@@ -264,11 +264,18 @@ scripts/check-api.ts          # pnpm check:api
   `supabase gen types typescript --linked > src/lib/supabase/database.types.ts` to generate
   them.
 
+## Trivia: Culé Ten
+
+`/trivia` has a daily top-10 game: name the 10 players in today's list, with a nationality
+hint per slot and 3 lives. It draws on a local repository of every Barça player, imported once
+from Wikidata (free). Historical lists are drafted from that data and must be approved on
+`/admin/trivia`; current-season lists are generated automatically. See
+[`src/features/trivia/README.md`](src/features/trivia/README.md).
+
 ## Roadmap
 
-- **Trivia module:** Barça quizzes for the group, with their own points and a combined
-  leaderboard. The structure is reserved in
-  [`src/features/trivia/`](src/features/trivia/README.md).
+- **More trivia:** more list types (e.g. Champions League, managers) and a combined trivia +
+  fantasy leaderboard.
 - Multiple leagues per user, with a league switcher on the leaderboard
 - Price changes based on form
 - Push or email reminders before kickoff

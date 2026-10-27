@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { Card, Notice, PageTitle } from "@/components/ui";
 import { injuryLabel } from "@/features/fantasy/availability";
@@ -63,6 +64,12 @@ export default async function AdminPage({
       <PageTitle subtitle="Sync data from Highlightly (free plan: 100 requests/day) and fix stats.">
         Admin
       </PageTitle>
+
+      <p className="text-sm">
+        <Link href="/admin/trivia" className="underline">
+          Culé Ten trivia: player repository &amp; lists →
+        </Link>
+      </p>
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold">Sync</h2>

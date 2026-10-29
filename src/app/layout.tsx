@@ -70,7 +70,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </Link>{" "}
           ·{" "}
           <Link href="/credits" className="underline">
-            Photo credits
+            Credits
           </Link>{" "}
           · Culé XI is a free, private game for friends. Not affiliated with FC Barcelona.
         </footer>

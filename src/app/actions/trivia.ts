@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { triviaDay } from "@/features/trivia/game";
 import {
+  importHistory,
   importRepository,
   makeGuess,
   searchPlayers,
@@ -88,6 +89,17 @@ export async function importTriviaRepository(): Promise<FormState> {
   }
 }
 
+export async function importTriviaHistory(): Promise<FormState> {
+  try {
+    await assertAdmin();
+    const result = await importHistory(createAdminClient());
+    revalidatePath("/admin/trivia");
+    return result;
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Import failed." };
+  }
+}
+
 const entriesSchema = z.object({
   listId: z.uuid(),
   title: z.string().trim().min(3).max(120),
@@ -110,6 +122,12 @@ export async function saveTriviaList(input: z.input<typeof entriesSchema>): Prom
       return { ok: false, message: "Each player can only appear once." };
     }
     const db = await createClient();
+    // Keep era hints for players who stay in the list.
+    const { data: before } = await db
+      .from("trivia_list_entries")
+      .select("player_id, era")
+      .eq("list_id", listId);
+    const eras = new Map((before ?? []).map((e) => [Number(e.player_id), e.era as string | null]));
     const { error: listError } = await db
       .from("trivia_lists")
       .update({ title, subtitle: subtitle || null })
@@ -123,6 +141,7 @@ export async function saveTriviaList(input: z.input<typeof entriesSchema>): Prom
         rank: i + 1,
         player_id: e.playerId,
         stat_label: e.statLabel || null,
+        era: eras.get(e.playerId) ?? null,
       })),
     );
     if (error) return { ok: false, message: error.message };

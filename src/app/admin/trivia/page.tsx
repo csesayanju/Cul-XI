@@ -5,7 +5,13 @@ import { Card, PageTitle } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
-import { ImportButton, ListEditor, NewListForm, type EditableList } from "./trivia-admin";
+import {
+  HistoryImportButton,
+  ImportButton,
+  ListEditor,
+  NewListForm,
+  type EditableList,
+} from "./trivia-admin";
 
 export const metadata: Metadata = { title: "Culé Ten admin" };
 // The Wikidata import (a server action on this page) takes ~30 s.
@@ -85,6 +91,16 @@ export default async function TriviaAdminPage() {
           </p>
           <ImportButton />
         </Card>
+        <Card className="space-y-3 text-sm">
+          <p>
+            Barça history: club records, 100+ appearance players, every season&apos;s top scorer,
+            managers and presidents, parsed once from Wikipedia and stored. Lists that pass every
+            check (10 different people, all matched, in order, no tie for 10th) go live; the rest
+            appear below as drafts. Lists you&apos;ve reviewed are never changed. Run the player
+            import first.
+          </p>
+          <HistoryImportButton />
+        </Card>
       </section>
 
       <section className="space-y-3">
@@ -112,8 +128,8 @@ export default async function TriviaAdminPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-bold">Historical lists</h2>
         <p className="text-sm text-ink-muted">
-          Drafts from Wikidata can contain mistakes — check each name, rank and stat, fix
-          what&apos;s wrong, then approve. Only approved lists are ever played.
+          Drafts can contain mistakes — check each name, rank and stat, fix what&apos;s wrong, then
+          approve. Only approved lists are ever played.
         </p>
         <NewListForm />
         {editable.map((l) => (

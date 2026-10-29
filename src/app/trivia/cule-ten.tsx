@@ -85,7 +85,9 @@ export function CuleTen({ initial }: { initial: GameView }) {
                   )}
                 </>
               ) : (
-                <span className="text-sm text-ink-muted">{s.hint.nationality ?? "Unknown"}</span>
+                <span className="text-sm text-ink-muted">
+                  {[s.hint.nationality ?? "Unknown", s.hint.era].filter(Boolean).join(" · ")}
+                </span>
               )}
             </span>
             {s.answer && !s.answer.found && <span className="text-xs text-garnet-500">missed</span>}

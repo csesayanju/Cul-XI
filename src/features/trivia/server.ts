@@ -3,7 +3,18 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { seasonLabel } from "@/lib/highlightly/mappers";
-import { fetchBarcaPlayers } from "@/lib/wikidata/barca-players";
+import { fetchBarcaPlayers, fetchPeople } from "@/lib/wikidata/barca-players";
+import {
+  articleUrl,
+  fetchArticleHtml,
+  HISTORY_PAGES,
+  parsePlayers,
+  parseRecords,
+  parseSeasons,
+  parseStaff,
+  wikidataIdsFor,
+  type PersonRef,
+} from "@/lib/wikipedia/barca-history";
 import { normalise } from "@/lib/wikipedia/player-photo";
 
 import {
@@ -17,6 +28,7 @@ import {
   type SlotView,
   type TriviaEntry,
 } from "./game";
+import { historyLists, type HistorySources } from "./history-lists";
 import { AUTO_TEMPLATES, autoLists, wikidataDrafts, type CurrentPlayerStats } from "./lists";
 import { matchPlayer } from "./matching";
 
@@ -234,9 +246,10 @@ async function saveDrafts(db: SupabaseClient) {
 async function replaceEntries(
   db: SupabaseClient,
   listId: string,
-  entries: { playerId: number; statLabel: string | null }[],
+  entries: { playerId: number; statLabel: string | null; era?: string | null }[],
 ) {
   check(await db.from("trivia_list_entries").delete().eq("list_id", listId), "clear entries");
+  if (entries.length === 0) return;
   check(
     await db.from("trivia_list_entries").insert(
       entries.map((e, i) => ({
@@ -244,10 +257,209 @@ async function replaceEntries(
         rank: i + 1,
         player_id: e.playerId,
         stat_label: e.statLabel,
+        era: e.era ?? null,
       })),
     ),
     "save entries",
   );
+}
+
+// ---------------------------------------------------------------------------------------
+// Barça history (Wikipedia)
+// ---------------------------------------------------------------------------------------
+
+type Role = "player" | "manager" | "president";
+
+/**
+ * One-time (re-runnable) import of Barça's history from Wikipedia: parses five list articles,
+ * keeps the parsed facts in `trivia_sources`, adds managers, presidents and any missing
+ * players to the repository (matched by Wikidata id), then builds history lists. Lists that
+ * pass every check go live; the rest are drafts. Lists an admin approved or archived are
+ * never changed.
+ */
+export async function importHistory(db: SupabaseClient) {
+  const pages = Object.entries(HISTORY_PAGES) as [keyof typeof HISTORY_PAGES, string][];
+  const html = Object.fromEntries(
+    await Promise.all(pages.map(async ([key, title]) => [key, await fetchArticleHtml(title)])),
+  ) as Record<keyof typeof HISTORY_PAGES, string>;
+  const src: HistorySources = {
+    players: parsePlayers(html.players),
+    records: parseRecords(html.records),
+    seasons: parseSeasons(html.seasons),
+    managers: parseStaff(html.managers),
+    presidents: parseStaff(html.presidents),
+  };
+  if (src.players.length < 100 || src.managers.length < 30 || src.presidents.length < 30) {
+    throw new Error("Wikipedia pages didn't parse as expected, so nothing was changed.");
+  }
+  const fetchedAt = new Date().toISOString();
+  check(
+    await db.from("trivia_sources").upsert(
+      pages.map(([key, title]) => ({
+        key: `wp:${key}`,
+        title,
+        url: articleUrl(title),
+        data: src[key],
+        fetched_at: fetchedAt,
+      })),
+      { onConflict: "key" },
+    ),
+    "save sources",
+  );
+
+  // Who appears where, and when (for roles and years of people new to the repository).
+  const people: { ref: PersonRef; role: Role; from: number | null; to: number | null }[] = [
+    ...src.players.map((p) => ({ ref: p.person, role: "player" as const, from: p.from, to: p.to })),
+    ...Object.values(src.records)
+      .flat()
+      .map((r) => ({ ref: r.person, role: "player" as const, from: null, to: null })),
+    ...src.seasons.flatMap((s) =>
+      s.scorers.map((ref) => ({
+        ref,
+        role: "player" as const,
+        from: s.startYear,
+        to: s.startYear,
+      })),
+    ),
+    ...src.managers.map((m) => ({
+      ref: m.person,
+      role: "manager" as const,
+      from: m.from?.year ?? null,
+      to: m.to?.year ?? null,
+    })),
+    ...src.presidents.map((m) => ({
+      ref: m.person,
+      role: "president" as const,
+      from: m.from?.year ?? null,
+      to: m.to?.year ?? null,
+    })),
+  ];
+  const qids = await wikidataIdsFor(people.flatMap((p) => (p.ref.title ? [p.ref.title] : [])));
+  const facts = new Map<
+    string,
+    { roles: Set<Role>; from: number | null; to: number | null; name: string }
+  >();
+  for (const p of people) {
+    const q = p.ref.title ? qids.get(p.ref.title) : undefined;
+    if (!q) continue;
+    const f = facts.get(q) ?? { roles: new Set<Role>(), from: null, to: null, name: p.ref.name };
+    f.roles.add(p.role);
+    if (p.from != null) f.from = f.from == null ? p.from : Math.min(f.from, p.from);
+    if (p.to != null) f.to = f.to == null ? p.to : Math.max(f.to, p.to);
+    facts.set(q, f);
+  }
+
+  const repo = await fetchAll<{ id: number; wikidata_id: string | null; roles: Role[] | null }>(
+    db,
+    "trivia_players",
+    "id, wikidata_id, roles",
+    "load repository",
+  );
+  const byQid = new Map(repo.filter((r) => r.wikidata_id).map((r) => [r.wikidata_id!, r]));
+
+  // Add people the repository doesn't have yet (details from Wikidata).
+  const missing = [...facts.keys()].filter((q) => !byQid.has(q));
+  const details = new Map((await fetchPeople(missing)).map((p) => [p.wikidataId, p]));
+  const newRows = missing.map((q) => {
+    const f = facts.get(q)!;
+    const d = details.get(q);
+    const name = d?.name ?? f.name;
+    return {
+      wikidata_id: q,
+      name,
+      search_text: searchText(
+        name,
+        [...(d?.aliases ?? []), f.name].filter((a) => a !== name),
+      ),
+      nationality: d?.nationality ?? null,
+      country_code: d?.countryCode ?? null,
+      position: f.roles.has("player") ? (d?.position ?? null) : null,
+      birth_year: d?.birthYear ?? null,
+      barca_from: f.from,
+      barca_to: f.to,
+      roles: [...f.roles],
+    };
+  });
+  for (let i = 0; i < newRows.length; i += 500) {
+    const added = check(
+      await db
+        .from("trivia_players")
+        .upsert(newRows.slice(i, i + 500), { onConflict: "wikidata_id" })
+        .select("id, wikidata_id, roles"),
+      "add people",
+    ) as { id: number; wikidata_id: string; roles: Role[] }[];
+    for (const a of added) byQid.set(a.wikidata_id, a);
+  }
+
+  // Players who were also managers or presidents get those roles too.
+  let roleUpdates = 0;
+  for (const [q, f] of facts) {
+    const row = byQid.get(q);
+    if (!row) continue;
+    const current = row.roles ?? ["player"];
+    const roles = new Set<Role>([...current, ...f.roles]);
+    if (roles.size !== current.length) {
+      check(
+        await db
+          .from("trivia_players")
+          .update({ roles: [...roles] })
+          .eq("id", row.id),
+        "update roles",
+      );
+      roleUpdates++;
+    }
+  }
+
+  const resolve = (p: PersonRef) => {
+    const q = p.title ? qids.get(p.title) : undefined;
+    const row = q ? byQid.get(q) : undefined;
+    return row ? Number(row.id) : null;
+  };
+  let live = 0;
+  let kept = 0;
+  const drafts: string[] = [];
+  for (const l of historyLists(src, resolve)) {
+    const { data: existing } = await db
+      .from("trivia_lists")
+      .select("id, status")
+      .eq("auto_key", l.key)
+      .maybeSingle();
+    if (existing && existing.status !== "draft") {
+      kept++;
+      continue;
+    }
+    const ok = l.problems.length === 0;
+    const list = check(
+      await db
+        .from("trivia_lists")
+        .upsert(
+          {
+            auto_key: l.key,
+            title: l.title,
+            subtitle: l.subtitle,
+            kind: "curated",
+            status: ok ? "approved" : "draft",
+            source: "wikipedia",
+          },
+          { onConflict: "auto_key" },
+        )
+        .select("id")
+        .single(),
+      "save history list",
+    ) as { id: string };
+    await replaceEntries(db, list.id, l.entries);
+    if (ok) live++;
+    else drafts.push(`${l.title} (${l.problems.join("; ")})`);
+  }
+
+  return {
+    ok: true,
+    message:
+      `Imported Barça history from Wikipedia: ${newRows.length} people added, ` +
+      `${roleUpdates} roles updated; ${live} lists live, ${drafts.length} drafts to review` +
+      (kept ? `, ${kept} reviewed lists left as they were.` : ".") +
+      (drafts.length ? ` Drafts: ${drafts.join(" · ")}` : ""),
+  };
 }
 
 // ---------------------------------------------------------------------------------------
@@ -381,13 +593,14 @@ async function loadEntries(db: SupabaseClient, listId: string): Promise<TriviaEn
   const rows = check(
     await db
       .from("trivia_list_entries")
-      .select("rank, stat_label, trivia_players(id, name, nationality, country_code)")
+      .select("rank, stat_label, era, trivia_players(id, name, nationality, country_code)")
       .eq("list_id", listId)
       .order("rank"),
     "load answers",
   ) as unknown as {
     rank: number;
     stat_label: string | null;
+    era: string | null;
     trivia_players: {
       id: number;
       name: string;
@@ -402,6 +615,7 @@ async function loadEntries(db: SupabaseClient, listId: string): Promise<TriviaEn
     nationality: r.trivia_players.nationality,
     countryCode: r.trivia_players.country_code,
     statLabel: r.stat_label,
+    era: r.era,
   }));
 }
 

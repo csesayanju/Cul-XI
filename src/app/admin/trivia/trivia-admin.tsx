@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import {
   createTriviaList,
+  importTriviaHistory,
   importTriviaRepository,
   saveTriviaList,
   setTriviaListStatus,
@@ -14,7 +15,15 @@ import { PlayerSearch } from "@/features/trivia/components/player-search";
 
 type Msg = { ok: boolean; message: string } | null;
 
-export function ImportButton() {
+function ActionButton({
+  action,
+  label,
+  pendingLabel,
+}: {
+  action: () => Promise<Msg>;
+  label: string;
+  pendingLabel: string;
+}) {
   const [msg, setMsg] = useState<Msg>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -25,15 +34,35 @@ export function ImportButton() {
         disabled={pending}
         onClick={() =>
           start(async () => {
-            setMsg(await importTriviaRepository());
+            setMsg(await action());
             router.refresh();
           })
         }
       >
-        {pending ? "Importing… (about 30 s)" : "Import Barça players from Wikidata"}
+        {pending ? pendingLabel : label}
       </Button>
       {msg && <Notice tone={msg.ok ? "success" : "error"}>{msg.message}</Notice>}
     </div>
+  );
+}
+
+export function ImportButton() {
+  return (
+    <ActionButton
+      action={importTriviaRepository}
+      label="Import Barça players from Wikidata"
+      pendingLabel="Importing… (about 30 s)"
+    />
+  );
+}
+
+export function HistoryImportButton() {
+  return (
+    <ActionButton
+      action={importTriviaHistory}
+      label="Import Barça history from Wikipedia"
+      pendingLabel="Importing… (about 30 s)"
+    />
   );
 }
 

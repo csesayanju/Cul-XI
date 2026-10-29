@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 
 import { Card, Notice, PageTitle } from "@/components/ui";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { articleUrl, HISTORY_PAGES } from "@/lib/wikipedia/barca-history";
 
-export const metadata: Metadata = { title: "Photo credits" };
+export const metadata: Metadata = { title: "Credits" };
 // Credits change as photos are found; render on request.
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,44 @@ export default async function CreditsPage() {
         author and licence terms. Culé XI is not affiliated with Wikimedia, the players or their
         clubs.
       </p>
+
+      <h2 className="mt-8 mb-2 text-lg font-bold">Culé Ten facts</h2>
+      <Card className="space-y-2 text-sm">
+        <p>
+          Culé Ten&apos;s history lists are built from facts in these Wikipedia articles (text
+          licensed{" "}
+          <a
+            href="https://creativecommons.org/licenses/by-sa/4.0/"
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            CC BY-SA 4.0
+          </a>
+          ), imported once and stored:
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          {Object.values(HISTORY_PAGES).map((title) => (
+            <li key={title}>
+              <a href={articleUrl(title)} target="_blank" rel="noreferrer" className="underline">
+                {title}
+              </a>
+            </li>
+          ))}
+        </ul>
+        <p>
+          Names, nationalities and career years come from{" "}
+          <a
+            href="https://www.wikidata.org/"
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            Wikidata
+          </a>{" "}
+          (CC0). Current-season lists use match data from Highlightly.
+        </p>
+      </Card>
     </>
   );
 }

@@ -268,14 +268,16 @@ scripts/check-api.ts          # pnpm check:api
 
 `/trivia` has a daily top-10 game: name the 10 players in today's list, with a nationality
 hint per slot and 3 lives. It draws on a local repository of every Barça player, imported once
-from Wikidata (free). Historical lists are drafted from that data and must be approved on
-`/admin/trivia`; current-season lists are generated automatically. See
+from Wikidata (free), plus managers and presidents. Lists span the club's whole history: club
+records, 100+ appearance players by nation, position and era, every season's top scorer,
+managers and presidents, parsed once from Wikipedia and stored. History lists that pass every
+check go live automatically; the rest wait for approval on `/admin/trivia`. Current-season
+lists are generated automatically. See
 [`src/features/trivia/README.md`](src/features/trivia/README.md).
 
 ## Roadmap
 
-- **More trivia:** more list types (e.g. Champions League, managers) and a combined trivia +
-  fantasy leaderboard.
+- **More trivia:** a combined trivia + fantasy leaderboard.
 - Multiple leagues per user, with a league switcher on the leaderboard
 - Price changes based on form
 - Push or email reminders before kickoff

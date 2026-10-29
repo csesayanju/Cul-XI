@@ -168,3 +168,50 @@ export async function fetchBarcaPlayers(fetchImpl: typeof fetch = globalThis.fet
   const json = (await res.json()) as { results?: { bindings?: Binding[] } };
   return parseBarcaPlayers(json.results?.bindings ?? []);
 }
+
+/** Same fields for given people (managers, presidents, players missing a Barça stint). */
+export const peopleQuery = (ids: string[]) => `
+SELECT ?player ?playerLabel
+       (SAMPLE(?sportCc) AS ?sportCode) (SAMPLE(?sportLbl) AS ?sportCountry)
+       (SAMPLE(?citCc) AS ?citizenCode) (SAMPLE(?citLbl) AS ?citizenCountry)
+       (SAMPLE(?posLbl) AS ?position) (SAMPLE(?birth) AS ?born)
+       (GROUP_CONCAT(DISTINCT ?alias; separator="|") AS ?aliases)
+WHERE {
+  VALUES ?player { ${ids.map((id) => `wd:${id}`).join(" ")} }
+  OPTIONAL {
+    ?player wdt:P1532 ?sportNation .
+    ?sportNation wdt:P297 ?sportCc .
+    ?sportNation rdfs:label ?sportLbl . FILTER(LANG(?sportLbl) = "en")
+  }
+  OPTIONAL {
+    ?player wdt:P27 ?citizenship .
+    ?citizenship wdt:P297 ?citCc .
+    ?citizenship rdfs:label ?citLbl . FILTER(LANG(?citLbl) = "en")
+  }
+  OPTIONAL { ?player wdt:P413 ?pos . ?pos rdfs:label ?posLbl . FILTER(LANG(?posLbl) = "en") }
+  OPTIONAL { ?player wdt:P569 ?birth . }
+  OPTIONAL { ?player skos:altLabel ?alias . FILTER(LANG(?alias) IN ("en", "es", "ca")) }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,es,ca". }
+}
+GROUP BY ?player ?playerLabel`;
+
+/** Looks up people by Wikidata id (100 per request). */
+export async function fetchPeople(ids: string[], fetchImpl: typeof fetch = globalThis.fetch) {
+  const out: WikidataPlayer[] = [];
+  const valid = [...new Set(ids)].filter((id) => /^Q\d+$/.test(id));
+  for (let i = 0; i < valid.length; i += 100) {
+    const res = await fetchImpl(WIKIDATA_SPARQL, {
+      method: "POST",
+      headers: {
+        "user-agent": USER_AGENT,
+        accept: "application/sparql-results+json",
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ query: peopleQuery(valid.slice(i, i + 100)) }),
+    });
+    if (!res.ok) throw new Error(`Wikidata HTTP ${res.status}`);
+    const json = (await res.json()) as { results?: { bindings?: Binding[] } };
+    out.push(...parseBarcaPlayers(json.results?.bindings ?? []));
+  }
+  return out;
+}

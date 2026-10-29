@@ -643,15 +643,13 @@ async function view(
   entries: TriviaEntry[],
   state: AttemptState,
 ): Promise<GameView> {
-  const { data: list } = await db
-    .from("trivia_lists")
-    .select("title, subtitle")
-    .eq("id", listId)
-    .single();
   const wrongIds = state.guesses.filter((g) => g.rank == null).map((g) => g.playerId);
-  const { data: wrong } = wrongIds.length
-    ? await db.from("trivia_players").select("id, name").in("id", wrongIds)
-    : { data: [] as { id: number; name: string }[] };
+  const [{ data: list }, { data: wrong }] = await Promise.all([
+    db.from("trivia_lists").select("title, subtitle").eq("id", listId).single(),
+    wrongIds.length
+      ? db.from("trivia_players").select("id, name").in("id", wrongIds)
+      : Promise.resolve({ data: [] as { id: number; name: string }[] }),
+  ]);
   const names = new Map((wrong ?? []).map((w) => [Number(w.id), w.name as string]));
   return {
     day,

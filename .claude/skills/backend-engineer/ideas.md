@@ -3,12 +3,14 @@
 Status: ✅ built · 🟢 data already stored · 🟡 needs a one-time import · 🔴 hard / unreliable data
 
 ## Built (Wikipedia history, `wp:*`)
+
 ✅ All-time apps / goals · La Liga / Copa / Europe scorers · record signings & sales ·
 foreign players apps & goals · Spanish scorers · Brazil / Netherlands apps · by position ·
 by era (5 buckets) · captains · goals per game · most seasons as top scorer · best single
 season · managers tenure & trophies · presidents tenure & trophies.
 
 ## Next, from data we already have 🟢
+
 - **La Masia graduates** with most league apps (needs a youth flag — Wikidata P54 on
   FC Barcelona Atlètic/youth teams, or a curated list).
 - **Born in Catalonia** — most apps (Wikidata place of birth → Catalonia).
@@ -24,6 +26,7 @@ season · managers tenure & trophies · presidents tenure & trophies.
   most Culé XI fantasy points this season (our own data — unique to us!).
 
 ## Needs a one-time import 🟡
+
 - Champions League final scorers / Barça European final line-ups (Wikipedia final pages).
 - Ballon d'Or podiums while at Barça (Wikipedia Ballon d'Or list).
 - El Clásico top scorers (Wikipedia "El Clásico" records tables).
@@ -32,6 +35,7 @@ season · managers tenure & trophies · presidents tenure & trophies.
 - Biggest wins in club history (answers = opponents → non-person answer type).
 
 ## Avoid / caution 🔴
+
 - Wikidata per-stint apps/goals (patchy — drafts only).
 - Anything needing friendlies or unofficial matches.
 - Lists where the 10th/11th are tied — `finalise()` rejects them; don't work around it.

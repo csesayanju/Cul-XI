@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 
 import { signOut } from "@/app/actions/auth";
+import { BottomNav, TopNav, type NavItem } from "@/components/app-nav";
 import { Wordmark } from "@/components/wordmark";
 import { getSessionUser } from "@/lib/auth";
 
@@ -24,47 +25,70 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
-  const nav = [
-    { href: "/matches", label: "Matches" },
-    { href: "/leaderboard", label: "Table" },
-    { href: "/rules", label: "Rules" },
-    { href: "/trivia", label: "Trivia" },
-    ...(user?.profile?.is_admin ? [{ href: "/admin", label: "Admin" }] : []),
+  const nav: NavItem[] = [
+    { href: "/matches", label: "Matches", icon: "matches" },
+    { href: "/leaderboard", label: "Table", icon: "table" },
+    { href: "/trivia", label: "Trivia", icon: "trivia" },
+    { href: "/rules", label: "Rules", icon: "rules" },
+    ...(user?.profile?.is_admin
+      ? [{ href: "/admin", label: "Admin", icon: "admin" } as const]
+      : []),
   ];
 
   return (
     <html lang="en">
       <body className="min-h-dvh font-sans antialiased">
-        <header className="sticky top-0 z-10 bg-brand text-brand-ink shadow-sm">
-          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-3">
-            <Link href="/" aria-label="Culé XI home">
+        <header className="sticky top-0 z-20 bg-brand/95 text-brand-ink shadow-lg shadow-blaugrana-950/20 backdrop-blur-lg">
+          <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-3 px-4">
+            <Link href="/" aria-label="Culé XI home" className="transition active:scale-95">
               <Wordmark className="text-xl" />
             </Link>
             {user && (
-              <nav className="flex items-center gap-3 overflow-x-auto text-sm font-medium">
-                {nav.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    // Fully prefetch the main tabs (cached for 60s via staleTimes) so taps are instant.
-                    prefetch={item.href !== "/admin"}
-                    className="opacity-90 hover:opacity-100"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+              <div className="flex items-center gap-2">
+                <TopNav items={nav} />
                 <form action={signOut}>
-                  <button className="opacity-70 hover:opacity-100" type="submit">
-                    Sign out
+                  <button
+                    type="submit"
+                    aria-label="Sign out"
+                    title="Sign out"
+                    className="flex size-9 items-center justify-center rounded-full text-white/75 transition hover:bg-white/10 hover:text-white active:scale-95"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.8}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                      className="size-5"
+                    >
+                      <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" />
+                    </svg>
                   </button>
                 </form>
-              </nav>
+              </div>
             )}
           </div>
-          <div className="h-1 bg-gradient-to-r from-blaugrana-500 via-garnet-500 to-gold-500" />
+          <div className="h-0.5 bg-gradient-to-r from-blaugrana-500 via-garnet-500 to-gold-500" />
         </header>
-        <main className="mx-auto max-w-2xl px-4 py-6">{children}</main>
-        <footer className="mx-auto max-w-2xl px-4 pb-8 text-center text-xs text-ink-muted">
+        <main
+          className={
+            user
+              ? "mx-auto max-w-2xl px-4 pt-6 pb-28 md:pb-10"
+              : "mx-auto max-w-2xl px-4 pt-6 pb-10"
+          }
+        >
+          {children}
+        </main>
+        {user && <BottomNav items={nav} />}
+        <footer
+          className={
+            user
+              ? "mx-auto max-w-2xl px-4 pb-24 text-center text-xs text-ink-muted md:pb-8"
+              : "mx-auto max-w-2xl px-4 pb-8 text-center text-xs text-ink-muted"
+          }
+        >
           <Link href="/rules" className="underline">
             How points work
           </Link>{" "}

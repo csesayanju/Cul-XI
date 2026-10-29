@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { LocalTime } from "@/components/local-time";
-import { Badge, Card, Notice, PageTitle } from "@/components/ui";
+import { LocalDateTile, LocalTime } from "@/components/local-time";
+import { Badge, Card, Notice, PageTitle, SectionTitle } from "@/components/ui";
 import { COMPETITION_LABELS } from "@/features/fantasy/labels";
 import { listMatches, type MatchSummary } from "@/features/fantasy/queries";
 import { requireUser } from "@/lib/auth";
@@ -17,31 +17,54 @@ function MatchCard({ match, hasTeam }: { match: MatchSummary; hasTeam: boolean }
     match.barca_goals != null && match.opponent_goals != null
       ? `${match.barca_goals}–${match.opponent_goals}`
       : null;
+  const home = match.is_home ? "Barça" : match.opponent_name;
+  const away = match.is_home ? match.opponent_name : "Barça";
 
   return (
-    <Link href={`/matches/${match.id}/pick`}>
-      <Card className="flex items-center justify-between gap-3 transition hover:border-accent">
-        <div className="min-w-0">
-          <div className="mb-1 flex flex-wrap items-center gap-2">
+    <Link href={`/matches/${match.id}/pick`} className="group block">
+      <Card className="flex items-center gap-3 p-3 transition duration-150 group-hover:border-accent/60 group-active:scale-[0.99]">
+        <LocalDateTile
+          iso={match.kickoff_at}
+          className={started ? "bg-line/50 text-ink-muted" : "bg-brand text-brand-ink"}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
             <Badge tone={match.competition === "ucl" ? "blue" : "garnet"}>
               {COMPETITION_LABELS[match.competition]}
             </Badge>
-            <span className="text-xs text-ink-muted">{match.is_home ? "Home" : "Away"}</span>
+            <span className="text-[11px] font-semibold text-ink-muted">
+              {match.is_home ? "Home" : "Away"}
+            </span>
           </div>
           <p className="truncate font-bold">
-            {match.is_home ? `Barça vs ${match.opponent_name}` : `${match.opponent_name} vs Barça`}
+            {home} <span className="font-medium text-ink-muted">vs</span> {away}
           </p>
-          <p className="text-sm text-ink-muted">
-            <LocalTime iso={match.kickoff_at} />
-            {score && <span className="ml-2 font-semibold text-ink">FT {score}</span>}
+          <p className="text-xs text-ink-muted">
+            {score ? (
+              <span className="tabular font-bold text-ink">FT {score}</span>
+            ) : (
+              <LocalTime iso={match.kickoff_at} withDate={false} />
+            )}
           </p>
         </div>
-        <div className="shrink-0 text-right text-sm">
+        <div className="flex shrink-0 items-center gap-1">
           {started ? (
             <Badge tone="neutral">{hasTeam ? "Locked" : "No team"}</Badge>
           ) : (
             <Badge tone={hasTeam ? "gold" : "garnet"}>{hasTeam ? "Edit XI" : "Pick XI"}</Badge>
           )}
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden
+            className="size-4 text-ink-muted transition group-hover:translate-x-0.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m9 6 6 6-6 6" />
+          </svg>
         </div>
       </Card>
     </Link>
@@ -61,8 +84,8 @@ export default async function MatchesPage() {
     <>
       <PageTitle subtitle="Teams lock at kickoff. Points land after full time.">Matches</PageTitle>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold tracking-wide text-ink-muted uppercase">Upcoming</h2>
+      <section className="space-y-2.5">
+        <SectionTitle>Upcoming</SectionTitle>
         {upcoming.length === 0 && (
           <Notice>No upcoming matches yet. An admin needs to sync fixtures.</Notice>
         )}
@@ -72,8 +95,8 @@ export default async function MatchesPage() {
       </section>
 
       {recent.length > 0 && (
-        <section className="mt-8 space-y-3">
-          <h2 className="text-sm font-semibold tracking-wide text-ink-muted uppercase">Recent</h2>
+        <section className="mt-8 space-y-2.5">
+          <SectionTitle>Recent</SectionTitle>
           {recent.map((m) => (
             <MatchCard key={m.id} match={m} hasTeam={myMatches.has(m.id)} />
           ))}

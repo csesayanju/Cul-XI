@@ -5,7 +5,7 @@ import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { triviaSearch } from "@/app/actions/trivia";
 import { Input } from "@/components/ui";
 
-import { flagEmoji } from "../game";
+import { Flag } from "@/components/flag";
 import type { SearchResult } from "../server";
 
 /** Autocomplete over the Barça player repository (debounced server search). */
@@ -83,7 +83,7 @@ export function PlayerSearch({
         <ul
           id={listId}
           role="listbox"
-          className="absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-xl border border-line bg-surface-raised shadow-lg"
+          className="absolute inset-x-0 top-full z-20 mt-1.5 max-h-72 animate-rise overflow-y-auto rounded-2xl border border-line bg-surface-raised py-1 shadow-2xl shadow-blaugrana-950/25"
         >
           {visible.map((p, i) => (
             <li key={p.id} role="option" aria-selected={i === active}>
@@ -91,13 +91,11 @@ export function PlayerSearch({
                 type="button"
                 onMouseEnter={() => setActive(i)}
                 onClick={() => pick(p)}
-                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+                className={`flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors ${
                   i === active ? "bg-line/60" : ""
                 }`}
               >
-                <span aria-hidden className="text-lg leading-none">
-                  {flagEmoji(p.countryCode) ?? "🏳️"}
-                </span>
+                <Flag code={p.countryCode} />
                 <span className="flex-1 font-medium">{p.name}</span>
                 {p.years && <span className="text-xs text-ink-muted">{p.years}</span>}
               </button>

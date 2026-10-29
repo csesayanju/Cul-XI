@@ -24,3 +24,32 @@ export function LocalTime({ iso, withDate = true }: { iso: string; withDate?: bo
     </time>
   );
 }
+
+/** Weekday / day / month stacked in a tile, in the viewer's timezone (UTC on the server). */
+export function LocalDateTile({ iso, className = "" }: { iso: string; className?: string }) {
+  const isClient = useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false,
+  );
+  const date = new Date(iso);
+  const part = (o: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("en-GB", { ...o, ...(isClient ? {} : { timeZone: "UTC" }) }).format(
+      date,
+    );
+  return (
+    <time
+      dateTime={iso}
+      suppressHydrationWarning
+      className={`flex w-12 shrink-0 flex-col items-center rounded-xl py-1.5 leading-none ${className}`}
+    >
+      <span className="text-[10px] font-bold tracking-wider uppercase opacity-70">
+        {part({ weekday: "short" })}
+      </span>
+      <span className="tabular mt-0.5 text-xl font-black">{part({ day: "numeric" })}</span>
+      <span className="text-[10px] font-bold tracking-wider uppercase opacity-70">
+        {part({ month: "short" })}
+      </span>
+    </time>
+  );
+}

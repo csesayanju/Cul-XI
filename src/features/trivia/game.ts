@@ -68,7 +68,12 @@ export function applyGuess(
 
 export interface SlotView {
   rank: number;
-  hint: { nationality: string | null; flag: string | null; era: string | null };
+  hint: {
+    nationality: string | null;
+    code: string | null;
+    flag: string | null;
+    era: string | null;
+  };
   /** Set once found, or for every slot when the game is over. */
   answer: { name: string; statLabel: string | null; found: boolean } | null;
 }
@@ -85,7 +90,12 @@ export function publicView(entries: TriviaEntry[], state: AttemptState): SlotVie
       const found = foundRanks.has(e.rank);
       return {
         rank: e.rank,
-        hint: { nationality: e.nationality, flag: flagEmoji(e.countryCode), era: e.era ?? null },
+        hint: {
+          nationality: e.nationality,
+          code: e.countryCode,
+          flag: flagEmoji(e.countryCode),
+          era: e.era ?? null,
+        },
         answer: found || state.finished ? { name: e.name, statLabel: e.statLabel, found } : null,
       };
     });

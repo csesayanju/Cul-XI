@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { preconnect } from "react-dom";
 
 import { Card, cx, Notice, PageTitle } from "@/components/ui";
 import { getMyLeague } from "@/features/fantasy/queries";
@@ -14,6 +15,8 @@ import { CuleTen } from "./cule-ten";
 export const metadata: Metadata = { title: "Culé Ten" };
 
 export default async function TriviaPage() {
+  // Flag images come from flagcdn.com: open the connection while the page renders.
+  preconnect("https://flagcdn.com");
   const user = await requireUser();
   const day = triviaDay();
   const t = trackedLeagues();

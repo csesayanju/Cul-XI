@@ -272,7 +272,12 @@ from Wikidata (free), plus managers and presidents. Lists span the club's whole 
 records, 100+ appearance players by nation, position and era, every season's top scorer,
 managers and presidents, parsed once from Wikipedia and stored. History lists that pass every
 check go live automatically; the rest wait for approval on `/admin/trivia`. Current-season
-lists are generated automatically. See
+lists are generated automatically.
+
+`/trivia/grid` has **Tiki-Taka-Toe**: a daily 3×3 grid where each square needs a Barça player
+who fits its row and column: another club he played for, his nationality, position or decade
+at Barça. 9 guesses, a rarity score, and a table with your league-mates. Club histories are
+imported once from Wikidata (`scripts/trivia-clubs.ts`, also part of the player import). See
 [`src/features/trivia/README.md`](src/features/trivia/README.md).
 
 ## Roadmap

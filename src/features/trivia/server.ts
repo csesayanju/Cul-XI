@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { importClubs } from "@/features/tiki-taka-toe/server";
 import { seasonLabel } from "@/lib/highlightly/mappers";
 import { fetchBarcaPlayers, fetchPeople } from "@/lib/wikidata/barca-players";
 import {
@@ -15,6 +16,7 @@ import {
   wikidataIdsFor,
   type PersonRef,
 } from "@/lib/wikipedia/barca-history";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { normalise } from "@/lib/wikipedia/player-photo";
 
 import {
@@ -71,9 +73,10 @@ export async function importRepository(db: SupabaseClient, barcaTeamId: number) 
   }
   const linked = await linkCurrentPlayers(db, barcaTeamId);
   const drafts = await saveDrafts(db);
+  const clubs = await importClubs(db);
   return {
     ok: true,
-    message: `Imported ${rows.length} Barça players from Wikidata; linked ${linked.size} current players; ${drafts} draft lists to review.`,
+    message: `Imported ${rows.length} Barça players from Wikidata; linked ${linked.size} current players; ${drafts} draft lists to review; ${clubs.links} other-club links for Tiki-Taka-Toe.`,
   };
 }
 
@@ -85,28 +88,6 @@ interface RepoRow {
   barca_from: number | null;
   barca_to: number | null;
   wd_apps: number | null;
-}
-
-/** PostgREST returns at most 1,000 rows per request: page through the whole table. */
-async function fetchAll<T>(
-  db: SupabaseClient,
-  table: string,
-  columns: string,
-  what: string,
-): Promise<T[]> {
-  const out: T[] = [];
-  for (let from = 0; ; from += 1000) {
-    const page = check(
-      await db
-        .from(table)
-        .select(columns)
-        .order("id")
-        .range(from, from + 999),
-      what,
-    ) as T[];
-    out.push(...page);
-    if (page.length < 1000) return out;
-  }
 }
 
 /**

@@ -215,3 +215,53 @@ export async function fetchPeople(ids: string[], fetchImpl: typeof fetch = globa
   }
   return out;
 }
+
+/** Every other club (association football clubs only) that Barça players played for. */
+export const PLAYER_CLUBS_QUERY = `
+SELECT ?player ?club ?clubLabel WHERE {
+  ?player p:P54/ps:P54 wd:${FC_BARCELONA} ; wdt:P106 wd:Q937857 .
+  ?player wdt:P54 ?club .
+  FILTER(?club != wd:${FC_BARCELONA})
+  ?club wdt:P31 wd:Q476028 .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+}`;
+
+export interface PlayerClub {
+  playerId: string;
+  clubId: string;
+  clubName: string;
+}
+
+export function parsePlayerClubs(bindings: Binding[]): PlayerClub[] {
+  const seen = new Set<string>();
+  const out: PlayerClub[] = [];
+  for (const b of bindings) {
+    const playerId = b.player?.value.split("/").pop();
+    const clubId = b.club?.value.split("/").pop();
+    const clubName = b.clubLabel?.value?.trim();
+    if (!playerId || !clubId || !clubName || /^Q\d+$/.test(clubName)) continue;
+    // Barça's own reserve and youth sides aren't "other clubs".
+    if (/^FC Barcelona\b/.test(clubName)) continue;
+    const key = `${playerId}:${clubId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ playerId, clubId, clubName });
+  }
+  return out;
+}
+
+/** Runs the clubs query (one request, a few seconds). */
+export async function fetchPlayerClubs(fetchImpl: typeof fetch = globalThis.fetch) {
+  const res = await fetchImpl(WIKIDATA_SPARQL, {
+    method: "POST",
+    headers: {
+      "user-agent": USER_AGENT,
+      accept: "application/sparql-results+json",
+      "content-type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ query: PLAYER_CLUBS_QUERY }),
+  });
+  if (!res.ok) throw new Error(`Wikidata HTTP ${res.status}`);
+  const json = (await res.json()) as { results?: { bindings?: Binding[] } };
+  return parsePlayerClubs(json.results?.bindings ?? []);
+}

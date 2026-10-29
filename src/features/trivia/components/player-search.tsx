@@ -3,9 +3,9 @@
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 
 import { triviaSearch } from "@/app/actions/trivia";
+import { Flag } from "@/components/flag";
 import { Input } from "@/components/ui";
 
-import { Flag } from "@/components/flag";
 import type { SearchResult } from "../server";
 
 /** Autocomplete over the Barça player repository (debounced server search). */
@@ -14,11 +14,14 @@ export function PlayerSearch({
   disabled,
   placeholder = "Type a player's name…",
   autoFocus,
+  inline,
 }: {
   onPick: (player: SearchResult) => void;
   disabled?: boolean;
   placeholder?: string;
   autoFocus?: boolean;
+  /** Show results in the flow (e.g. in a bottom sheet) instead of a dropdown. */
+  inline?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -83,7 +86,11 @@ export function PlayerSearch({
         <ul
           id={listId}
           role="listbox"
-          className="absolute inset-x-0 top-full z-20 mt-1.5 max-h-72 animate-rise overflow-y-auto rounded-2xl border border-line bg-surface-raised py-1 shadow-2xl shadow-blaugrana-950/25"
+          className={
+            inline
+              ? "mt-2 max-h-[40dvh] animate-rise overflow-y-auto rounded-2xl border border-line bg-surface py-1"
+              : "absolute inset-x-0 top-full z-20 mt-1.5 max-h-72 animate-rise overflow-y-auto rounded-2xl border border-line bg-surface-raised py-1 shadow-2xl shadow-blaugrana-950/25"
+          }
         >
           {visible.map((p, i) => (
             <li key={p.id} role="option" aria-selected={i === active}>

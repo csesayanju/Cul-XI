@@ -11,6 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 import { CuleTen } from "./cule-ten";
+import { TriviaTabs } from "./tabs";
 
 export const metadata: Metadata = { title: "Culé Ten" };
 
@@ -36,9 +37,15 @@ export default async function TriviaPage() {
 
   return (
     <div className="space-y-6">
-      <PageTitle subtitle="Name the 10 players in today's list. Each slot shows a nationality; 3 wrong guesses and you're out.">
-        Culé Ten
-      </PageTitle>
+      <div>
+        <PageTitle
+          eyebrow="Daily trivia"
+          subtitle="Name the 10 people in today's list. Each slot shows a nationality; 3 wrong guesses and you're out."
+        >
+          Culé Ten
+        </PageTitle>
+        <TriviaTabs active="/trivia" />
+      </div>
 
       {game ? (
         <CuleTen initial={game} />

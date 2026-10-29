@@ -69,3 +69,42 @@ describe("Culé Ten security", () => {
     expect(await count("select * from public.trivia_attempts", ADMIN)).toBe(1);
   });
 });
+
+describe("Tiki-Taka-Toe security", () => {
+  beforeAll(async () => {
+    await db.exec(`
+      insert into public.trivia_clubs (qid, name) values ('Q8682', 'Real Madrid Club de Fútbol');
+      insert into public.trivia_player_clubs (player_id, club_qid)
+        select id, 'Q8682' from public.trivia_players where name = 'Player 1';
+      insert into public.ttt_daily (day, grid) values ('2026-10-30', '{"answers": []}');
+      insert into public.ttt_attempts (user_id, day, filled, guesses_left) values ('${BRUNO}', '2026-10-30', 2, 5);
+    `);
+  });
+
+  it("never lets players read the grid (it holds example answers)", async () => {
+    await expect(count("select * from public.ttt_daily", BRUNO)).rejects.toThrow(
+      /permission denied/,
+    );
+  });
+
+  it("shows the clubs data to signed-in players, read-only", async () => {
+    expect(await count("select * from public.trivia_player_clubs", BRUNO)).toBe(1);
+    await expect(
+      asUser(db, BRUNO, (tx) =>
+        tx.query(`insert into public.trivia_clubs (qid, name) values ('Q1', 'Fake FC')`),
+      ),
+    ).rejects.toThrow(/permission denied/);
+  });
+
+  it("doesn't let players write their own grid", async () => {
+    await expect(
+      asUser(db, BRUNO, (tx) =>
+        tx.query(`update public.ttt_attempts set filled = 9 where user_id = $1`, [BRUNO]),
+      ),
+    ).rejects.toThrow(/permission denied/);
+  });
+
+  it("lets league-mates see each other's grid results", async () => {
+    expect(await count("select * from public.ttt_attempts", ADMIN)).toBe(1);
+  });
+});

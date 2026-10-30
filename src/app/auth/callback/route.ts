@@ -7,8 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 /**
- * Magic-link and Google sign-in landing: exchanges the code for a session, grants admin to ADMIN_EMAILS,
- * then sends new users to /join and members to /matches.
+ * Magic-link and Google sign-in landing: exchanges the code for a session, grants admin to
+ * ADMIN_EMAILS, then goes straight to /matches (everyone plays in the Global league).
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -29,10 +29,5 @@ export async function GET(request: Request) {
     await createAdminClient().from("profiles").update({ is_admin: true }).eq("id", user.id);
   }
 
-  const { count } = await supabase
-    .from("league_members")
-    .select("league_id", { count: "exact", head: true })
-    .eq("user_id", user.id);
-
-  return NextResponse.redirect(new URL(count ? "/matches" : "/join", url.origin));
+  return NextResponse.redirect(new URL("/matches", url.origin));
 }

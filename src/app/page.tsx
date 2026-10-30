@@ -26,7 +26,12 @@ export default async function HomePage({
   if (user) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-black">Hola, {user.profile?.display_name ?? "culé"} 👋</h1>
+        <div>
+          <h1 className="text-2xl font-black">Hola, {user.profile?.display_name ?? "culé"} 👋</h1>
+          <Link href="/join" className="text-sm text-ink-muted underline">
+            Change name or join a league
+          </Link>
+        </div>
         {user.isAnonymous && (
           <Notice>
             You&apos;re playing as a guest. This account only exists in this browser, so don&apos;t
@@ -61,11 +66,12 @@ export default async function HomePage({
           <li>💰 100 credits, max 7 from one team</li>
           <li>🎖️ Captain scores double</li>
           <li>🏆 Beat your friends, match by match</li>
+          <li>🧠 Daily trivia: Culé Ten, Tiki-Taka-Toe and more</li>
         </ul>
       </section>
 
       <Card>
-        <h2 className="mb-3 text-lg font-bold">Sign in</h2>
+        <h2 className="mb-3 text-center text-lg font-bold">Jump in</h2>
         {params.error && ERRORS[params.error] && (
           <div className="mb-3">
             <Notice tone="error">{ERRORS[params.error]}</Notice>
@@ -77,9 +83,8 @@ export default async function HomePage({
           </div>
         )}
         <LoginForm methods={methods} />
-        <p className="mt-3 text-xs text-ink-muted">
-          No password needed. Invite-only — everyone needs the group&apos;s invite code after
-          signing in.
+        <p className="mt-3 text-center text-xs text-ink-muted">
+          You start in the Global league. Got an invite code from friends? Add it later.
         </p>
       </Card>
     </div>

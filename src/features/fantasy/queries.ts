@@ -188,26 +188,52 @@ export async function getMyTeam(
 }
 
 /** The user's first league and its members (id -> display name), in one query. */
-export async function getMyLeague(db: SupabaseClient, userId: string) {
-  const { data: membership } = await db
-    .from("league_members")
-    .select("league_id, leagues(name, league_members(user_id, profiles(display_name)))")
-    .eq("user_id", userId)
-    .order("joined_at")
-    .limit(1)
-    .maybeSingle();
-  if (!membership) return null;
+export interface LeagueRef {
+  id: string;
+  name: string;
+  isGlobal: boolean;
+}
 
-  const m = membership as unknown as {
-    league_id: string;
-    leagues: {
-      name: string;
-      league_members: { user_id: string; profiles: { display_name: string } | null }[];
-    } | null;
-  };
+/** The user's leagues: private ones first (oldest first), then Global. */
+export async function getMyLeagues(db: SupabaseClient, userId: string): Promise<LeagueRef[]> {
+  const { data } = await db
+    .from("league_members")
+    .select("league_id, joined_at, leagues(name, is_global)")
+    .eq("user_id", userId)
+    .order("joined_at");
+  return (
+    (data ?? []) as unknown as {
+      league_id: string;
+      leagues: { name: string; is_global: boolean } | null;
+    }[]
+  )
+    .map((m) => ({
+      id: m.league_id,
+      name: m.leagues?.name ?? "League",
+      isGlobal: !!m.leagues?.is_global,
+    }))
+    .sort((a, b) => Number(a.isGlobal) - Number(b.isGlobal));
+}
+
+/**
+ * One of the user's leagues with its members' names: `leagueId` if given (and the user is in
+ * it), else their first private league, else Global.
+ */
+export async function getMyLeague(db: SupabaseClient, userId: string, leagueId?: string) {
+  const leagues = await getMyLeagues(db, userId);
+  const pick = leagues.find((l) => l.id === leagueId) ?? leagues[0];
+  if (!pick) return null;
+
+  const { data } = await db
+    .from("league_members")
+    .select("user_id, profiles(display_name)")
+    .eq("league_id", pick.id);
   const names = new Map<string, string>();
-  for (const row of m.leagues?.league_members ?? []) {
+  for (const row of (data ?? []) as unknown as {
+    user_id: string;
+    profiles: { display_name: string } | null;
+  }[]) {
     names.set(row.user_id, row.profiles?.display_name ?? "Unknown");
   }
-  return { id: m.league_id, name: m.leagues?.name ?? "League", members: names };
+  return { ...pick, members: names, all: leagues };
 }

@@ -42,16 +42,16 @@ function Table({ rows, meId }: { rows: Standing[]; meId: string }) {
 export default async function LeaderboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ match?: string }>;
+  searchParams: Promise<{ match?: string; league?: string }>;
 }) {
   const user = await requireUser();
-  const { match } = await searchParams;
+  const { match, league: leagueParam } = await searchParams;
   const supabase = await createClient();
 
   // One parallel round: RLS already limits points to you and your league-mates, and
   // buildStandings ignores anyone outside the league.
   const [league, { data: points }, { data: scoredMatches }] = await Promise.all([
-    getMyLeague(supabase, user.id),
+    getMyLeague(supabase, user.id, leagueParam),
     supabase.from("fantasy_points").select("user_id, match_id, total_points"),
     supabase
       .from("matches")
@@ -66,7 +66,7 @@ export default async function LeaderboardPage({
         <Notice>
           You&apos;re not in a league yet.{" "}
           <Link href="/join" className="underline">
-            Join with an invite code
+            Join a league
           </Link>
           .
         </Notice>
@@ -91,6 +91,8 @@ export default async function LeaderboardPage({
     league.members,
   );
 
+  const withLeague = (href: string) =>
+    league.all.length > 1 ? `${href}${href.includes("?") ? "&" : "?"}league=${league.id}` : href;
   const tab = (href: string, label: string, active: boolean) => (
     <Link
       key={href}
@@ -106,11 +108,52 @@ export default async function LeaderboardPage({
 
   return (
     <>
-      <PageTitle subtitle={league.name}>Leaderboard</PageTitle>
+      <PageTitle
+        subtitle={
+          league.isGlobal ? (
+            <>
+              Everyone playing Culé XI.{" "}
+              <Link href="/join" className="underline">
+                Got an invite code?
+              </Link>
+            </>
+          ) : (
+            league.name
+          )
+        }
+      >
+        Leaderboard
+      </PageTitle>
+      {league.all.length > 1 && (
+        <nav
+          aria-label="Leagues"
+          className="mb-3 flex gap-1 rounded-2xl border border-line bg-surface-raised p-1"
+        >
+          {league.all.map((l) => (
+            <Link
+              key={l.id}
+              href={`/leaderboard?league=${l.id}`}
+              aria-current={l.id === league.id ? "page" : undefined}
+              className={cx(
+                "flex-1 truncate rounded-xl px-3 py-2 text-center text-sm font-bold transition active:scale-[0.98]",
+                l.id === league.id
+                  ? "bg-brand text-brand-ink shadow-md shadow-brand/25"
+                  : "text-ink-muted hover:text-ink",
+              )}
+            >
+              {l.isGlobal ? "🌍 Global" : l.name}
+            </Link>
+          ))}
+        </nav>
+      )}
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-        {tab("/leaderboard", "Season", !selectedMatch)}
+        {tab(withLeague("/leaderboard"), "Season", !selectedMatch)}
         {matches.map((m) =>
-          tab(`/leaderboard?match=${m.id}`, `vs ${m.opponent_name}`, selectedMatch?.id === m.id),
+          tab(
+            withLeague(`/leaderboard?match=${m.id}`),
+            `vs ${m.opponent_name}`,
+            selectedMatch?.id === m.id,
+          ),
         )}
       </div>
       {matches.length === 0 && (

@@ -21,7 +21,7 @@ const SUPABASE_STUB = `
   create schema auth;
   create table auth.users (
     instance_id uuid, id uuid primary key, aud text, role text, email text unique,
-    encrypted_password text, email_confirmed_at timestamptz,
+    encrypted_password text, email_confirmed_at timestamptz, is_anonymous boolean not null default false,
     raw_app_meta_data jsonb, raw_user_meta_data jsonb,
     created_at timestamptz, updated_at timestamptz,
     confirmation_token text, recovery_token text, email_change_token_new text, email_change text

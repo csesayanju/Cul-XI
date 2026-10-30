@@ -1,37 +1,77 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useTransition } from "react";
 
-import { joinLeague } from "@/app/actions/league";
+import { joinLeague, leaveLeague, updateDisplayName } from "@/app/actions/league";
 import { Button, Input, Notice } from "@/components/ui";
 
-export function JoinForm({ defaultName }: { defaultName: string }) {
-  const [state, action, pending] = useActionState(joinLeague, null);
-
+export function NameForm({ current }: { current: string }) {
+  const [state, action, pending] = useActionState(updateDisplayName, null);
   return (
-    <form action={action} className="space-y-3">
-      <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="code">
-          Invite code
-        </label>
-        <Input id="code" name="code" required autoComplete="off" autoCapitalize="none" />
-      </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="displayName">
-          Your name on the leaderboard
-        </label>
+    <form action={action} className="space-y-2">
+      <label className="block text-sm font-semibold" htmlFor="displayName">
+        Your name on leaderboards
+      </label>
+      <div className="flex gap-2">
         <Input
           id="displayName"
           name="displayName"
           required
+          minLength={2}
           maxLength={40}
-          defaultValue={defaultName}
+          defaultValue={current}
+          autoComplete="nickname"
         />
+        <Button type="submit" variant="secondary" disabled={pending} className="shrink-0">
+          {pending ? "Saving…" : "Save"}
+        </Button>
       </div>
-      <Button type="submit" disabled={pending} className="w-full">
-        {pending ? "Joining…" : "Join"}
-      </Button>
+      {state && <Notice tone={state.ok ? "success" : "error"}>{state.message}</Notice>}
+    </form>
+  );
+}
+
+export function JoinForm() {
+  const [state, action, pending] = useActionState(joinLeague, null);
+  return (
+    <form action={action} className="space-y-2">
+      <label className="block text-sm font-semibold" htmlFor="code">
+        Invite code
+      </label>
+      <div className="flex gap-2">
+        <Input
+          id="code"
+          name="code"
+          required
+          autoComplete="off"
+          autoCapitalize="none"
+          placeholder="From your group admin"
+        />
+        <Button type="submit" disabled={pending} className="shrink-0">
+          {pending ? "Joining…" : "Join"}
+        </Button>
+      </div>
       {state && !state.ok && <Notice tone="error">{state.message}</Notice>}
     </form>
+  );
+}
+
+export function LeaveButton({ leagueId, name }: { leagueId: string; name: string }) {
+  const [pending, start] = useTransition();
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => {
+        if (window.confirm(`Leave ${name}? You can rejoin with its invite code.`)) {
+          start(async () => {
+            await leaveLeague(leagueId);
+          });
+        }
+      }}
+      className="text-xs font-semibold text-ink-muted underline hover:text-garnet-500"
+    >
+      {pending ? "Leaving…" : "Leave"}
+    </button>
   );
 }

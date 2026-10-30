@@ -45,7 +45,7 @@ describe("migrations + seed", () => {
     expect(res.rows.find((r) => r.display_name === "Admin Ana")?.is_admin).toBe(true);
   });
 
-  it("names Google users by full name and guests generically", async () => {
+  it("names Google users by full name and nameless users with a football name", async () => {
     const names = await db
       .transaction(async (tx) => {
         await tx.exec(`
@@ -61,7 +61,8 @@ describe("migrations + seed", () => {
         throw res.rows.map((r) => r.display_name); // roll back, return the names
       })
       .catch((rows: unknown) => rows);
-    expect(names).toEqual(["Gala Puyol", "Guest culé"]);
+    expect((names as string[])[0]).toBe("Gala Puyol");
+    expect((names as string[])[1]).toMatch(/ \d{2}$/);
   });
 
   it("seeds 11 players per fantasy team", async () => {
@@ -77,9 +78,10 @@ describe("row-level security", () => {
     await expect(count("select * from public.matches", null)).rejects.toThrow(/permission denied/);
   });
 
-  it("only shows league-mates' profiles", async () => {
-    expect(await count("select * from public.profiles", BRUNO)).toBe(3);
-    expect(await count("select * from public.profiles", OUTSIDER)).toBe(1);
+  it("shows profiles of everyone you share a league with (all of Global)", async () => {
+    // Everyone is in the Global league, so the outsider (no private league) sees all 4.
+    expect(await count("select * from public.profiles", BRUNO)).toBe(4);
+    expect(await count("select * from public.profiles", OUTSIDER)).toBe(4);
   });
 
   it("hides league-mates' teams before kickoff but shows them after", async () => {
@@ -262,5 +264,49 @@ describe("save_fantasy_team", () => {
       /exactly 11/,
     );
     await expect(save(CARLA, m, players, players[0]!, players[0]!)).rejects.toThrow(/Captain/);
+  });
+});
+
+describe("sign-up: names and the Global league", () => {
+  const signUp = (id: string, meta: object, anonymous = false) =>
+    db.query(
+      `insert into auth.users (id, email, raw_user_meta_data, is_anonymous) values ($1, $2, $3, $4)`,
+      [id, anonymous ? null : `${id.slice(0, 4)}@example.com`, JSON.stringify(meta), anonymous],
+    );
+  const nameOf = async (id: string) =>
+    (
+      await db.query<{ display_name: string }>(
+        `select display_name from public.profiles where id = $1`,
+        [id],
+      )
+    ).rows[0]!.display_name;
+
+  it("gives guests a unique football name and everyone a seat in Global", async () => {
+    await signUp("a0000000-0000-0000-0000-000000000001", {}, true);
+    await signUp("a0000000-0000-0000-0000-000000000002", {}, true);
+    const [g1, g2] = [
+      await nameOf("a0000000-0000-0000-0000-000000000001"),
+      await nameOf("a0000000-0000-0000-0000-000000000002"),
+    ];
+    expect(g1).toMatch(/^\S+( \S+)? \S+ \d{2}( \d+)?$/);
+    expect(g1.toLowerCase()).not.toBe(g2.toLowerCase());
+    const global = await db.query<{ n: number }>(
+      `select count(*)::int as n from public.league_members m join public.leagues l on l.id = m.league_id
+        where l.is_global and m.user_id = 'a0000000-0000-0000-0000-000000000001'`,
+    );
+    expect(global.rows[0]!.n).toBe(1);
+  });
+
+  it("numbers a real user whose name is taken (case-insensitive)", async () => {
+    await signUp("a0000000-0000-0000-0000-000000000003", { full_name: "bruno" });
+    expect(await nameOf("a0000000-0000-0000-0000-000000000003")).toBe("bruno 2");
+  });
+
+  it("rejects renaming to a name someone already has", async () => {
+    await expect(
+      db.query(
+        `update public.profiles set display_name = 'CARLA' where display_name = 'Admin Ana'`,
+      ),
+    ).rejects.toThrow(/duplicate key/);
   });
 });

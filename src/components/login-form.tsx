@@ -30,6 +30,10 @@ function GoogleMark() {
   );
 }
 
+/**
+ * One tap to play: guest (instant, auto name) or Google; email links tucked away for those
+ * who want them. Everyone lands in the Global league, invite codes are optional.
+ */
 export function LoginForm({ methods }: { methods: AuthMethods }) {
   const [emailState, emailAction, emailPending] = useActionState(signInWithMagicLink, null);
   const [googleState, googleAction, googlePending] = useActionState(signInWithGoogle, null);
@@ -37,10 +41,27 @@ export function LoginForm({ methods }: { methods: AuthMethods }) {
   const busy = emailPending || googlePending || guestPending;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {methods.guest && (
+        <form action={guestAction}>
+          <Button type="submit" disabled={busy} className="min-h-13 w-full text-base">
+            {guestPending ? "Kicking off…" : "⚽ Play now"}
+          </Button>
+          <p className="mt-1.5 text-center text-xs text-ink-muted">
+            No sign-up. You get a football name, change it any time.
+          </p>
+          {guestState && !guestState.ok && <Notice tone="error">{guestState.message}</Notice>}
+        </form>
+      )}
+
       {methods.google && (
         <form action={googleAction}>
-          <Button type="submit" variant="ghost" disabled={busy} className="w-full gap-2">
+          <Button
+            type="submit"
+            variant={methods.guest ? "ghost" : "primary"}
+            disabled={busy}
+            className="w-full gap-2"
+          >
             <GoogleMark />
             {googlePending ? "Opening Google…" : "Continue with Google"}
           </Button>
@@ -48,47 +69,33 @@ export function LoginForm({ methods }: { methods: AuthMethods }) {
         </form>
       )}
 
-      {methods.google && (
-        <div className="flex items-center gap-3 text-xs text-ink-muted">
-          <span className="h-px flex-1 bg-line" />
-          or use email
-          <span className="h-px flex-1 bg-line" />
-        </div>
-      )}
-
-      <form action={emailAction} className="space-y-3">
-        <label className="block text-sm font-medium" htmlFor="email">
-          Email
-        </label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          required
-          placeholder="you@example.com"
-        />
-        <Button type="submit" disabled={busy} className="w-full">
-          {emailPending ? "Sending…" : "Email me a sign-in link"}
-        </Button>
-        {emailState && (
-          <Notice tone={emailState.ok ? "success" : "error"}>{emailState.message}</Notice>
-        )}
-      </form>
-
-      {methods.guest && (
-        <form action={guestAction} className="space-y-2 border-t border-line pt-4">
-          <Button type="submit" variant="secondary" disabled={busy} className="w-full">
-            {guestPending ? "Starting…" : "Play as a guest"}
-          </Button>
-          <p className="text-xs text-ink-muted">
-            No email needed. Your guest account lives in this browser only: if you clear it or
-            switch devices, you start over.
-          </p>
-          {guestState && !guestState.ok && <Notice tone="error">{guestState.message}</Notice>}
+      <details className="group rounded-xl" open={!methods.guest && !methods.google}>
+        <summary className="cursor-pointer list-none py-1 text-center text-sm font-semibold text-ink-muted hover:text-ink [&::-webkit-details-marker]:hidden">
+          Use email instead <span className="inline-block transition group-open:rotate-180">⌄</span>
+        </summary>
+        <form action={emailAction} className="mt-2 space-y-2">
+          <label className="sr-only" htmlFor="email">
+            Email
+          </label>
+          <div className="flex gap-2">
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              required
+              placeholder="you@example.com"
+            />
+            <Button type="submit" variant="secondary" disabled={busy} className="shrink-0">
+              {emailPending ? "Sending…" : "Send link"}
+            </Button>
+          </div>
+          {emailState && (
+            <Notice tone={emailState.ok ? "success" : "error"}>{emailState.message}</Notice>
+          )}
         </form>
-      )}
+      </details>
     </div>
   );
 }

@@ -71,8 +71,12 @@ function MatchCard({ match, hasTeam }: { match: MatchSummary; hasTeam: boolean }
   );
 }
 
-export default async function MatchesPage() {
-  const user = await requireUser();
+export default async function MatchesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ welcome?: string }>;
+}) {
+  const [user, { welcome }] = await Promise.all([requireUser(), searchParams]);
   const supabase = await createClient();
   const [{ upcoming, recent }, teams] = await Promise.all([
     listMatches(supabase),
@@ -83,6 +87,18 @@ export default async function MatchesPage() {
   return (
     <>
       <PageTitle subtitle="Teams lock at kickoff. Points land after full time.">Matches</PageTitle>
+      {welcome && (
+        <div className="mb-5">
+          <Notice tone="success">
+            Welcome, <strong>{user.profile?.display_name}</strong>! You&apos;re in the Global
+            league.{" "}
+            <Link href="/join" className="underline">
+              Change your name or add an invite code
+            </Link>
+            .
+          </Notice>
+        </div>
+      )}
 
       <section className="space-y-2.5">
         <SectionTitle>Upcoming</SectionTitle>

@@ -44,14 +44,14 @@ export async function signInWithGoogle(): Promise<FormState> {
 }
 
 /**
- * Plays as a guest: creates an anonymous Supabase user (no email). The invite code on /join
- * is still required, so guests can't get into the league without it.
+ * Plays as a guest: creates an anonymous Supabase user (no email). The database gives them a
+ * unique football name and a seat in the Global league, so they can play straight away.
  */
 export async function signInAsGuest(): Promise<FormState> {
   const supabase = await createClient();
   const { error } = await supabase.auth.signInAnonymously();
   if (error) return { ok: false, message: `Guest sign-in is unavailable: ${error.message}` };
-  redirect("/join");
+  redirect("/matches?welcome=1");
 }
 
 export async function signOut() {

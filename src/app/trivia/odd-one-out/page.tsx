@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+import { GAME_PAGE } from "../layout-classes";
 import { TriviaTabs } from "../tabs";
 import { OddOneOut } from "./odd-one-out";
 
@@ -27,7 +28,7 @@ export default async function OddOneOutPage() {
     .slice(0, 20);
 
   return (
-    <div>
+    <div className={GAME_PAGE}>
       <PageTitle
         eyebrow="Endless trivia"
         subtitle="Three of them share something. Spot the one who doesn't — and keep the streak going."

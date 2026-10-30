@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { InstallApp } from "@/components/install-app";
 import { LoginForm } from "@/components/login-form";
 import { Card, Notice } from "@/components/ui";
 import { Wordmark } from "@/components/wordmark";
@@ -25,7 +26,7 @@ export default async function HomePage({
 
   if (user) {
     return (
-      <div className="space-y-4">
+      <div className="mx-auto max-w-3xl space-y-4">
         <div>
           <h1 className="text-2xl font-black">Hola, {user.profile?.display_name ?? "culé"} 👋</h1>
           <Link href="/join" className="text-sm text-ink-muted underline">
@@ -38,16 +39,23 @@ export default async function HomePage({
             clear its data or you&apos;ll lose your teams.
           </Notice>
         )}
-        <div className="grid gap-3 sm:grid-cols-2">
+        <InstallApp />
+        <div className="grid gap-3 sm:grid-cols-3">
           <Link href="/matches">
             <Card className="h-full transition hover:border-accent">
-              <p className="font-bold">Pick your XI</p>
-              <p className="text-sm text-ink-muted">Build a team for the next Barça match.</p>
+              <p className="font-bold">⚽ Fantasy</p>
+              <p className="text-sm text-ink-muted">Pick your XI for the next Barça match.</p>
+            </Card>
+          </Link>
+          <Link href="/trivia">
+            <Card className="h-full transition hover:border-accent">
+              <p className="font-bold">🧠 Daily trivia</p>
+              <p className="text-sm text-ink-muted">Seven games, from Culé Ten to Missing XI.</p>
             </Card>
           </Link>
           <Link href="/leaderboard">
             <Card className="h-full transition hover:border-accent">
-              <p className="font-bold">Leaderboard</p>
+              <p className="font-bold">🏆 Leaderboard</p>
               <p className="text-sm text-ink-muted">See how you stack up against friends.</p>
             </Card>
           </Link>
@@ -57,7 +65,7 @@ export default async function HomePage({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 lg:grid lg:grid-cols-2 lg:items-center lg:gap-10 lg:space-y-0 lg:pt-6">
       <section className="rounded-3xl bg-gradient-to-br from-blaugrana-700 to-garnet-700 p-6 text-white shadow-lg">
         <Wordmark className="text-4xl" />
         <p className="mt-3 text-lg font-semibold">Fantasy football for every Barça match.</p>

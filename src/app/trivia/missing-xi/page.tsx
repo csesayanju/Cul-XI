@@ -9,6 +9,7 @@ import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+import { GAME_PAGE } from "../layout-classes";
 import { TriviaTabs } from "../tabs";
 import { MissingXi } from "./missing-xi";
 
@@ -30,7 +31,7 @@ export default async function MissingXiPage() {
     .sort((a, b) => b.found - a.found || b.lives_left - a.lives_left);
 
   return (
-    <div>
+    <div className={GAME_PAGE}>
       <PageTitle
         eyebrow="Daily trivia"
         subtitle="A famous European final. Name the starting XI from the shirt numbers and flags. 5 lives."

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { signOut } from "@/app/actions/auth";
 import { BottomNav, TopNav, type NavItem } from "@/components/app-nav";
+import { ServiceWorker } from "@/components/install-app";
 import { Wordmark } from "@/components/wordmark";
 import { getSessionUser } from "@/lib/auth";
 
@@ -12,6 +13,9 @@ export const metadata: Metadata = {
   title: { default: "Culé XI", template: "%s · Culé XI" },
   description: "Private fantasy football for Barça matches. Free to play, just for friends.",
   robots: { index: false, follow: false },
+  applicationName: "Culé XI",
+  appleWebApp: { capable: true, title: "Culé XI", statusBarStyle: "black-translucent" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
@@ -26,7 +30,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
   const nav: NavItem[] = [
-    { href: "/matches", label: "Matches", icon: "matches" },
+    { href: "/matches", label: "Fantasy", icon: "matches" },
     { href: "/leaderboard", label: "Table", icon: "table" },
     { href: "/trivia", label: "Trivia", icon: "trivia" },
     { href: "/rules", label: "Rules", icon: "rules" },
@@ -39,7 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en">
       <body className="min-h-dvh font-sans antialiased">
         <header className="sticky top-0 z-20 bg-brand/95 text-brand-ink shadow-lg shadow-blaugrana-950/20 backdrop-blur-lg">
-          <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-3 px-4">
+          <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
             <Link href="/" aria-label="Culé XI home" className="transition active:scale-95">
               <Wordmark className="text-xl" />
             </Link>
@@ -75,18 +79,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main
           className={
             user
-              ? "mx-auto max-w-2xl px-4 pt-6 pb-28 md:pb-10"
-              : "mx-auto max-w-2xl px-4 pt-6 pb-10"
+              ? "mx-auto max-w-5xl px-4 pt-6 pb-28 md:pb-10"
+              : "mx-auto max-w-5xl px-4 pt-6 pb-10"
           }
         >
           {children}
         </main>
         {user && <BottomNav items={nav} />}
+        <ServiceWorker />
         <footer
           className={
             user
-              ? "mx-auto max-w-2xl px-4 pb-24 text-center text-xs text-ink-muted md:pb-8"
-              : "mx-auto max-w-2xl px-4 pb-8 text-center text-xs text-ink-muted"
+              ? "mx-auto max-w-5xl px-4 pb-24 text-center text-xs text-ink-muted md:pb-8"
+              : "mx-auto max-w-5xl px-4 pb-8 text-center text-xs text-ink-muted"
           }
         >
           <Link href="/rules" className="underline">

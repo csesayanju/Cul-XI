@@ -9,7 +9,7 @@ import { requireUser } from "@/lib/auth";
 import { hasKickedOff } from "@/lib/time";
 import { createClient } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Matches" };
+export const metadata: Metadata = { title: "Fantasy" };
 
 function MatchCard({ match, hasTeam }: { match: MatchSummary; hasTeam: boolean }) {
   const started = hasKickedOff(match.kickoff_at);
@@ -86,7 +86,12 @@ export default async function MatchesPage({
 
   return (
     <>
-      <PageTitle subtitle="Teams lock at kickoff. Points land after full time.">Matches</PageTitle>
+      <PageTitle
+        eyebrow="Fantasy football"
+        subtitle="Pick 11 from Barça and their opponent for every match. Teams lock at kickoff; points land after full time."
+      >
+        Fantasy
+      </PageTitle>
       {welcome && (
         <div className="mb-5">
           <Notice tone="success">
@@ -100,22 +105,26 @@ export default async function MatchesPage({
         </div>
       )}
 
-      <section className="space-y-2.5">
-        <SectionTitle>Upcoming</SectionTitle>
+      <section>
+        <SectionTitle>Upcoming matches</SectionTitle>
         {upcoming.length === 0 && (
           <Notice>No upcoming matches yet. An admin needs to sync fixtures.</Notice>
         )}
-        {upcoming.map((m) => (
-          <MatchCard key={m.id} match={m} hasTeam={myMatches.has(m.id)} />
-        ))}
+        <div className="grid gap-2.5 lg:grid-cols-2">
+          {upcoming.map((m) => (
+            <MatchCard key={m.id} match={m} hasTeam={myMatches.has(m.id)} />
+          ))}
+        </div>
       </section>
 
       {recent.length > 0 && (
-        <section className="mt-8 space-y-2.5">
-          <SectionTitle>Recent</SectionTitle>
-          {recent.map((m) => (
-            <MatchCard key={m.id} match={m} hasTeam={myMatches.has(m.id)} />
-          ))}
+        <section className="mt-8">
+          <SectionTitle>Recent matches</SectionTitle>
+          <div className="grid gap-2.5 lg:grid-cols-2">
+            {recent.map((m) => (
+              <MatchCard key={m.id} match={m} hasTeam={myMatches.has(m.id)} />
+            ))}
+          </div>
         </section>
       )}
     </>

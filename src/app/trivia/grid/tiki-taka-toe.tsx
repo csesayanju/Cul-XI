@@ -220,7 +220,7 @@ export function TikiTakaToe({ initial }: { initial: TttView }) {
         </div>
       )}
 
-      <div className="grid grid-cols-[minmax(0,0.8fr)_repeat(3,minmax(0,1fr))] gap-1.5 sm:gap-2">
+      <div className="mx-auto grid max-w-xl grid-cols-[minmax(0,0.8fr)_repeat(3,minmax(0,1fr))] gap-1.5 sm:gap-2">
         <div aria-hidden />
         {game.cols.map((c, i) => (
           <div key={`c${i}`} className="flex min-h-16 items-end justify-center pb-1">

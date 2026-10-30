@@ -17,9 +17,10 @@ export interface NavItem {
 
 const ICONS: Record<NavIcon, ReactNode> = {
   matches: (
+    // A football (Fantasy).
     <>
-      <rect x="3" y="5" width="18" height="16" rx="3" />
-      <path d="M3 10h18M8 3v4M16 3v4" />
+      <circle cx="12" cy="12" r="9" />
+      <path d="m12 7 4 3-1.5 4.5h-5L8 10l4-3ZM12 7V3.5M16 10l3.5-1.5M14.5 14.5l2 3M9.5 14.5l-2 3M8 10 4.5 8.5" />
     </>
   ),
   table: (

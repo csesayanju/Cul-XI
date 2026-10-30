@@ -9,6 +9,7 @@ import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+import { GAME_PAGE } from "../layout-classes";
 import { TriviaTabs } from "../tabs";
 import { CareerPath } from "./career-path";
 
@@ -32,7 +33,7 @@ export default async function CareerPage() {
     .sort((a, b) => Number(b.solved) - Number(a.solved) || a.tries - b.tries);
 
   return (
-    <div>
+    <div className={GAME_PAGE}>
       <PageTitle
         eyebrow="Daily trivia"
         subtitle="Whose career is this? Name the player in 5 guesses. Each miss unlocks a hint."

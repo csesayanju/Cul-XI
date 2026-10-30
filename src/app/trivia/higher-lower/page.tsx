@@ -8,6 +8,7 @@ import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+import { GAME_PAGE } from "../layout-classes";
 import { TriviaTabs } from "../tabs";
 import { HigherLower } from "./higher-lower";
 
@@ -30,7 +31,7 @@ export default async function HigherLowerPage() {
     .slice(0, 20);
 
   return (
-    <div>
+    <div className={GAME_PAGE}>
       <PageTitle
         eyebrow="Endless trivia"
         subtitle="Did they score more or fewer La Liga goals? Keep the streak alive. Legends with 100+ goals."

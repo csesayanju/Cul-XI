@@ -9,6 +9,7 @@ import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+import { GAME_PAGE } from "../layout-classes";
 import { TriviaTabs } from "../tabs";
 import { Connections } from "./connections";
 
@@ -30,7 +31,7 @@ export default async function ConnectionsPage() {
     .sort((a, b) => b.groups - a.groups || a.mistakes - b.mistakes);
 
   return (
-    <div>
+    <div className={GAME_PAGE}>
       <PageTitle
         eyebrow="Daily trivia"
         subtitle="Sixteen players, four hidden groups: a club, a country, a trophy… Four mistakes and you're out."

@@ -9,6 +9,7 @@ import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+import { GAME_PAGE } from "../layout-classes";
 import { TriviaTabs } from "../tabs";
 import { TikiTakaToe } from "./tiki-taka-toe";
 
@@ -33,7 +34,7 @@ export default async function GridPage() {
     .sort((a, b) => b.filled - a.filled || b.guesses_left - a.guesses_left);
 
   return (
-    <div>
+    <div className={GAME_PAGE}>
       <PageTitle
         eyebrow="Daily trivia"
         subtitle="Fill each square with a player who fits both its row and its column: clubs from across La Liga, nations and trophies. 9 guesses, each player once."

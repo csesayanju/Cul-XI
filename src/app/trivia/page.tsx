@@ -11,6 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 import { CuleTen } from "./cule-ten";
+import { GAME_PAGE } from "./layout-classes";
 import { TriviaTabs } from "./tabs";
 
 export const metadata: Metadata = { title: "Culé Ten" };
@@ -36,16 +37,14 @@ export default async function TriviaPage() {
     .sort((a, b) => b.found - a.found || b.lives_left - a.lives_left);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <PageTitle
-          eyebrow="Daily trivia"
-          subtitle="Name the 10 people in today's list, from Barça legends to La Liga records. Each slot shows a nationality; 3 wrong guesses and you're out."
-        >
-          Culé Ten
-        </PageTitle>
-        <TriviaTabs active="/trivia" />
-      </div>
+    <div className={GAME_PAGE}>
+      <PageTitle
+        eyebrow="Daily trivia"
+        subtitle="Name the 10 people in today's list, from Barça legends to La Liga records. Each slot shows a nationality; 3 wrong guesses and you're out."
+      >
+        Culé Ten
+      </PageTitle>
+      <TriviaTabs active="/trivia" />
 
       {game ? (
         <CuleTen initial={game} />
@@ -55,7 +54,7 @@ export default async function TriviaPage() {
         </Notice>
       )}
 
-      <section className="space-y-2">
+      <section className="mt-8 space-y-2">
         <div className="flex items-baseline justify-between">
           <h2 className="text-lg font-bold">Today&apos;s table</h2>
           <span className="text-sm text-ink-muted">Your streak: {table.streak} 🔥</span>

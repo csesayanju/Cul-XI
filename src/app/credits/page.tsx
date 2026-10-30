@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { Card, Notice, PageTitle } from "@/components/ui";
+import { NO_LOGO } from "@/features/career/import";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { commonsPage } from "@/lib/wikidata/careers";
 import { articleUrl, HISTORY_PAGES } from "@/lib/wikipedia/barca-history";
 
 export const metadata: Metadata = { title: "Credits" };
@@ -21,14 +23,30 @@ interface CreditRow {
  * user data.
  */
 export default async function CreditsPage() {
-  const { data } = await createAdminClient()
-    .from("players")
-    .select("name, team_name, photo_credit, photo_page_url")
-    .not("photo_url", "is", null)
-    .not("photo_credit", "is", null)
-    .order("team_name")
-    .order("name");
+  const db = createAdminClient();
+  const [{ data }, { data: logos }] = await Promise.all([
+    db
+      .from("players")
+      .select("name, team_name, photo_credit, photo_page_url")
+      .not("photo_url", "is", null)
+      .not("photo_credit", "is", null)
+      .order("team_name")
+      .order("name"),
+    db
+      .from("trivia_clubs")
+      .select("qid, name, short_name, logo_file")
+      .not("logo_file", "is", null)
+      .order("name"),
+  ]);
   const rows = (data ?? []) as CreditRow[];
+  const clubLogos = (
+    (logos ?? []) as {
+      qid: string;
+      name: string;
+      short_name: string | null;
+      logo_file: string;
+    }[]
+  ).filter((l) => !NO_LOGO.has(l.qid));
 
   return (
     <>
@@ -70,6 +88,33 @@ export default async function CreditsPage() {
         author and licence terms. Culé XI is not affiliated with Wikimedia, the players or their
         clubs.
       </p>
+
+      {clubLogos.length > 0 && (
+        <>
+          <h2 className="mt-8 mb-2 text-lg font-bold">Club badges</h2>
+          <Card className="space-y-2 text-sm">
+            <p>
+              Badges in the trivia games are free files from Wikimedia Commons (no FC Barcelona
+              crest is ever shown). Follow each link for the author and licence; the clubs own their
+              trademarks.
+            </p>
+            <ul className="flex flex-wrap gap-x-3 gap-y-1">
+              {clubLogos.map((l) => (
+                <li key={l.qid}>
+                  <a
+                    href={commonsPage(l.logo_file)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    {l.short_name ?? l.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </>
+      )}
 
       <h2 className="mt-8 mb-2 text-lg font-bold">Culé Ten facts</h2>
       <Card className="space-y-2 text-sm">

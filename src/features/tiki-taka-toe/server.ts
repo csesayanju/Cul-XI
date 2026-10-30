@@ -2,7 +2,9 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { NO_LOGO } from "@/features/career/import";
 import { fetchAll } from "@/lib/supabase/fetch-all";
+import { commonsThumb } from "@/lib/wikidata/careers";
 import { fetchPlayerClubs } from "@/lib/wikidata/barca-players";
 
 import {
@@ -165,6 +167,8 @@ export interface TttView {
   finished: boolean;
   rarity: number | null;
   players: number;
+  /** Club badge image per club category key (free Commons logos only). */
+  badges: Record<string, string>;
 }
 
 async function loadAttempt(db: SupabaseClient, userId: string, day: string): Promise<TttState> {
@@ -191,14 +195,25 @@ async function view(
 ): Promise<TttView> {
   const exampleIds = state.finished ? grid.answers.flatMap((a) => a.examples) : [];
   const ids = [...new Set([...state.cells.filter((c): c is number => c != null), ...exampleIds])];
-  const [{ data: people }, { data: all }] = await Promise.all([
+  const clubKeys = [...grid.rows, ...grid.cols]
+    .filter((c) => c.type === "club" && !NO_LOGO.has(c.key))
+    .map((c) => c.key);
+  const [{ data: people }, { data: all }, { data: logos }] = await Promise.all([
     ids.length
       ? db.from("trivia_players").select("id, name, country_code").in("id", ids)
       : Promise.resolve({
           data: [] as { id: number; name: string; country_code: string | null }[],
         }),
     db.from("ttt_attempts").select("cells").eq("day", day),
+    db
+      .from("trivia_clubs")
+      .select("qid, logo_file")
+      .in("qid", clubKeys)
+      .not("logo_file", "is", null),
   ]);
+  const badges = Object.fromEntries(
+    (logos ?? []).map((l) => [l.qid as string, commonsThumb(l.logo_file as string)]),
+  );
   const byId = new Map((people ?? []).map((p) => [Number(p.id), p]));
 
   // Pick rates per cell among everyone who has played today.
@@ -236,6 +251,7 @@ async function view(
     finished: state.finished,
     rarity: filled > 0 || state.finished ? rarityScore(state.cells, percents) : null,
     players: attempts.length,
+    badges,
   };
 }
 

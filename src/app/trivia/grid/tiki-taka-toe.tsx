@@ -67,10 +67,22 @@ const AWARD_ICONS = {
 } as const;
 
 /** A row/column header: flag, club monogram, decade, position or trophy. */
-function CategoryLabel({ c, compact }: { c: Category; compact?: boolean }) {
+function CategoryLabel({ c, compact, badge }: { c: Category; compact?: boolean; badge?: string }) {
   const icon =
     c.type === "nation" ? (
       <Flag code={c.key} className="h-5 w-7" />
+    ) : c.type === "club" && badge ? (
+      <span className="flex size-9 items-center justify-center rounded-full bg-white p-1 shadow-md ring-1 ring-black/10">
+        {/* eslint-disable-next-line @next/next/no-img-element -- small Commons thumbnails */}
+        <img
+          src={badge}
+          alt=""
+          width={28}
+          height={28}
+          loading="lazy"
+          className="size-7 object-contain"
+        />
+      </span>
     ) : c.type === "club" ? (
       <span
         className={cx(
@@ -210,13 +222,13 @@ export function TikiTakaToe({ initial }: { initial: TttView }) {
         <div aria-hidden />
         {game.cols.map((c, i) => (
           <div key={`c${i}`} className="flex min-h-16 items-end justify-center pb-1">
-            <CategoryLabel c={c} />
+            <CategoryLabel c={c} badge={game.badges?.[c.key]} />
           </div>
         ))}
         {game.rows.map((r, ri) => (
           <div key={`r${ri}`} className="contents">
             <div className="flex items-center justify-center pr-1">
-              <CategoryLabel c={r} />
+              <CategoryLabel c={r} badge={game.badges?.[r.key]} />
             </div>
             {game.cols.map((_, ci) => {
               const i = ri * 3 + ci;
@@ -316,7 +328,7 @@ export function TikiTakaToe({ initial }: { initial: TttView }) {
             <div className="mb-4 grid grid-cols-2 gap-2">
               {[row, col].map((c, i) => (
                 <div key={i} className="rounded-2xl border border-line bg-surface p-3">
-                  <CategoryLabel c={c} />
+                  <CategoryLabel c={c} badge={game.badges?.[c.key]} />
                   <p className="mt-1 text-center text-[11px] text-ink-muted">{describe(c)}</p>
                 </div>
               ))}

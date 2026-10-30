@@ -264,6 +264,14 @@ scripts/check-api.ts          # pnpm check:api
   `supabase gen types typescript --linked > src/lib/supabase/database.types.ts` to generate
   them.
 
+## Signing in and leagues
+
+One tap: **Play now** (a guest account with an automatic football name like "Tiki Kubala 27")
+or **Continue with Google**; email links are under "Use email instead". Everyone joins the
+**Global** league automatically; an invite code adds a private league on top (shown first on
+the leaderboard, which can switch between leagues). Names are unique (case-insensitive).
+Change your name or join a league on `/join`.
+
 ## Trivia: Culé Ten
 
 `/trivia` has a daily top-10 game: name the 10 players in today's list, with a nationality
@@ -279,8 +287,14 @@ needs a player who fits its row and column: a club (La Liga's 35 biggest plus fa
 ones), nationality, position, a trophy (Pichichi, Zamora, 100+ La Liga goals) or a decade at
 Barça. 9 guesses, a rarity score, and a table with your league-mates.
 
+`/trivia/career` has **Career Path** (daily: whose club career is this? 5 guesses, a hint per
+miss) and `/trivia/higher-lower` has **Higher or Lower** (endless: more or fewer La Liga goals?
+streaks judged on the server). Club badges are free logos from Wikimedia Commons, credited on
+`/credits`; FC Barcelona's crest is never shown.
+
 All of La Liga (63 clubs, ~12k players, ~27k club links, records and trophies) is imported
-once from Wikipedia and Wikidata and stored locally:
+once from Wikipedia and Wikidata and stored locally, then logos and careers:
+`NODE_OPTIONS=--conditions=react-server pnpm exec tsx scripts/trivia-extras.ts` (~1 min) after:
 `NODE_OPTIONS=--conditions=react-server pnpm exec tsx scripts/trivia-la-liga.ts` (~2 min). See
 [`src/features/trivia/README.md`](src/features/trivia/README.md).
 

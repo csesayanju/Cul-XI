@@ -138,3 +138,48 @@ describe("La Liga trivia data", () => {
     expect(r.rows.some((x) => x.kind === "nation" && x.key === "ES")).toBe(false);
   });
 });
+
+describe("Career Path and Higher or Lower security", () => {
+  beforeAll(async () => {
+    await db.exec(`
+      insert into public.trivia_careers (player_id, seq, club_qid, from_year, to_year)
+        select id, 1, 'Q8682', 2000, 2005 from public.trivia_players where name = 'Player 1';
+      insert into public.career_daily (day, player_id)
+        select '2026-10-31', id from public.trivia_players where name = 'Player 1';
+      insert into public.career_attempts (user_id, day, guesses) values ('${BRUNO}', '2026-10-31', '[1]');
+      insert into public.hol_runs (user_id, a_id, b_id, streak, best)
+        select '${BRUNO}', min(id), max(id), 3, 7 from public.trivia_players;
+    `);
+  });
+
+  it("never lets players read today's Career Path answer", async () => {
+    await expect(count("select * from public.career_daily", BRUNO)).rejects.toThrow(
+      /permission denied/,
+    );
+    expect(await count("select * from public.trivia_careers", BRUNO)).toBe(1);
+  });
+
+  it("doesn't let players write their own results or streaks", async () => {
+    await expect(
+      asUser(db, BRUNO, (tx) =>
+        tx.query(`update public.career_attempts set solved = true where user_id = $1`, [BRUNO]),
+      ),
+    ).rejects.toThrow(/permission denied/);
+    await expect(
+      asUser(db, BRUNO, (tx) =>
+        tx.query(`update public.hol_runs set best = 999 where user_id = $1`, [BRUNO]),
+      ),
+    ).rejects.toThrow(/permission denied/);
+  });
+
+  it("lets league-mates see each other's results and streaks", async () => {
+    expect(await count("select * from public.career_attempts", ADMIN)).toBe(1);
+    expect(await count("select * from public.hol_runs", ADMIN)).toBe(1);
+  });
+
+  it("keeps the candidate picker away from players", async () => {
+    await expect(
+      asUser(db, BRUNO, (tx) => tx.query(`select * from public.career_candidates(0, 10)`)),
+    ).rejects.toThrow(/permission denied/);
+  });
+});

@@ -8,6 +8,7 @@ import { cx } from "@/components/ui";
 const TABS = [
   { href: "/trivia", label: "Culé Ten", icon: "🔟" },
   { href: "/trivia/grid", label: "Grid", icon: "#️⃣" },
+  { href: "/trivia/mystery", label: "Mystery", icon: "❓" },
   { href: "/trivia/connections", label: "Connect", icon: "🧩" },
   { href: "/trivia/missing-xi", label: "Missing XI", icon: "🏟️" },
   { href: "/trivia/career", label: "Career", icon: "🧭" },

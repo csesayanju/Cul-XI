@@ -229,3 +229,26 @@ describe("Missing XI, Connections and Odd One Out security", () => {
     }
   });
 });
+
+describe("Mystery Player security", () => {
+  beforeAll(async () => {
+    await db.exec(`
+      insert into public.mystery_daily (day, player_id)
+        select '2026-11-01', min(id) from public.trivia_players;
+      insert into public.mystery_attempts (user_id, day, guesses) values ('${BRUNO}', '2026-11-01', '[2]');
+    `);
+  });
+
+  it("never lets players read today's mystery player", async () => {
+    await expect(count("select * from public.mystery_daily", BRUNO)).rejects.toThrow(
+      /permission denied/,
+    );
+  });
+
+  it("shows league-mates' results but never lets players write them", async () => {
+    expect(await count("select * from public.mystery_attempts", ADMIN)).toBe(1);
+    await expect(
+      asUser(db, BRUNO, (tx) => tx.query(`update public.mystery_attempts set solved = true`)),
+    ).rejects.toThrow(/permission denied/);
+  });
+});

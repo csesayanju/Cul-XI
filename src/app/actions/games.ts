@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { guessCareer, type CareerView } from "@/features/career/server";
 import { guessConnections, type ConnectionsView } from "@/features/connections/server";
 import { guessXi, type XiView } from "@/features/missing-xi/server";
+import { guessMystery, type MysteryView } from "@/features/mystery/server";
 import { answerOoo, type OooView } from "@/features/odd-one-out/server";
 import type { HolPick } from "@/features/higher-lower/game";
 import { answerHol, type HolView } from "@/features/higher-lower/server";
@@ -168,5 +169,40 @@ export async function xiGuess(playerId: number): Promise<XiResult> {
       return { ok: true, game, tone: "info", message: "You've already tried him." };
     case "over":
       return { ok: true, game, tone: "info", message: "Today's XI is done — back tomorrow." };
+  }
+}
+
+export type MysteryResult =
+  | { ok: true; game: MysteryView; message: string; tone: "success" | "error" | "info" }
+  | { ok: false; message: string };
+
+/** A Mystery Player guess, compared on the server (today's player never reaches the browser). */
+export async function mysteryGuess(playerId: number): Promise<MysteryResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: "Sign in to play." };
+  if (!Number.isInteger(playerId) || playerId <= 0) return { ok: false, message: "Pick a player." };
+  const result = await guessMystery(createAdminClient(), user.id, triviaDay(), playerId);
+  if (!result) return { ok: false, message: "There's no Mystery Player today." };
+  const { game, outcome } = result;
+  revalidatePath("/trivia/mystery");
+  switch (outcome.kind) {
+    case "correct":
+      return { ok: true, game, tone: "success", message: "That's him! 🎯" };
+    case "wrong":
+      return {
+        ok: true,
+        game,
+        tone: "error",
+        message: game.finished ? "Out of guesses." : "Not him — check the clues.",
+      };
+    case "repeat":
+      return { ok: true, game, tone: "info", message: "You've already guessed him." };
+    case "over":
+      return {
+        ok: true,
+        game,
+        tone: "info",
+        message: "Today's mystery is solved — back tomorrow.",
+      };
   }
 }

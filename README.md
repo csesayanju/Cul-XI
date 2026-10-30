@@ -287,6 +287,9 @@ needs a player who fits its row and column: a club (La Liga's 35 biggest plus fa
 ones), nationality, position, a trophy (Pichichi, Zamora, 100+ La Liga goals) or a decade at
 Barça. 9 guesses, a rarity score, and a table with your league-mates.
 
+**Mystery Player** (`/trivia/mystery`, daily): guess the hidden La Liga player; every guess
+shows nation, position, birth year (older/younger), clubs in common and Barça. 8 guesses.
+
 More games: **Connections** (`/trivia/connections`, daily: 16 players, 4 hidden groups),
 **Missing XI** (`/trivia/missing-xi`, daily: name a famous European final's starting XI on a
 pitch; 60 line-ups of Spanish clubs from Wikipedia) and **Odd One Out**

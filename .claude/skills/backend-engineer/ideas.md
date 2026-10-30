@@ -15,6 +15,10 @@ Pichichi & Zamora counts, best Pichichi seasons, goals per game — ties for 10t
 ✅ Tiki-Taka-Toe across La Liga: clubs × clubs, nations, positions, Pichichi / Zamora /
 100-goal trophies, Barça decades — sets from `ttt_category_members` in one query.
 
+✅ Games on stored data: Connections (category sets), Odd One Out (category sets + fame),
+Missing XI (`trivia_lineups`: 60 European finals), Career Path (`trivia_careers` for every
+La Liga player), Higher or Lower (La Liga goals). Ballon d'Or podiums on players.
+
 ## Next, from data we already have 🟢
 
 - **La Masia graduates** with most league apps (needs a youth flag — Wikidata P54 on

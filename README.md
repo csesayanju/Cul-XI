@@ -287,6 +287,14 @@ needs a player who fits its row and column: a club (La Liga's 35 biggest plus fa
 ones), nationality, position, a trophy (Pichichi, Zamora, 100+ La Liga goals) or a decade at
 Barça. 9 guesses, a rarity score, and a table with your league-mates.
 
+More games: **Connections** (`/trivia/connections`, daily: 16 players, 4 hidden groups),
+**Missing XI** (`/trivia/missing-xi`, daily: name a famous European final's starting XI on a
+pitch; 60 line-ups of Spanish clubs from Wikipedia) and **Odd One Out**
+(`/trivia/odd-one-out`, endless: which of four never played for the club / won the trophy?).
+Ballon d'Or podiums (Wikipedia) are a Tiki-Taka-Toe trophy square. Import with
+`NODE_OPTIONS=--conditions=react-server pnpm exec tsx scripts/trivia-more.ts` (also fetches club
+careers for every La Liga player).
+
 `/trivia/career` has **Career Path** (daily: whose club career is this? 5 guesses, a hint per
 miss) and `/trivia/higher-lower` has **Higher or Lower** (endless: more or fewer La Liga goals?
 streaks judged on the server). Club badges are free logos from Wikimedia Commons, credited on

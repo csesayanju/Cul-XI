@@ -9,16 +9,23 @@ import { USER_AGENT, WIKIDATA_SPARQL } from "./barca-players";
 
 type Binding = Record<string, { value: string } | undefined>;
 
-async function sparql(query: string, fetchImpl: typeof fetch): Promise<Binding[]> {
-  const res = await fetchImpl(WIKIDATA_SPARQL, {
-    method: "POST",
-    headers: {
-      "user-agent": USER_AGENT,
-      accept: "application/sparql-results+json",
-      "content-type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({ query }),
-  });
+/** Wikidata's query service rate-limits bulk use: on 429/5xx wait (Retry-After) and retry. */
+async function sparql(query: string, fetchImpl: typeof fetch, tries = 6): Promise<Binding[]> {
+  let res: Response;
+  for (let attempt = 1; ; attempt++) {
+    res = await fetchImpl(WIKIDATA_SPARQL, {
+      method: "POST",
+      headers: {
+        "user-agent": USER_AGENT,
+        accept: "application/sparql-results+json",
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ query }),
+    });
+    if (res.ok || attempt >= tries || !(res.status === 429 || res.status >= 500)) break;
+    const wait = Number(res.headers.get("retry-after")) || 5 * attempt;
+    await new Promise((r) => setTimeout(r, Math.min(wait, 60) * 1000));
+  }
   if (!res.ok) throw new Error(`Wikidata HTTP ${res.status}`);
   const json = (await res.json()) as { results?: { bindings?: Binding[] } };
   return json.results?.bindings ?? [];

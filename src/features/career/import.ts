@@ -25,7 +25,7 @@ const check = <T>(r: { data: T; error: { message: string } | null }, what: strin
 /** The app never shows FC Barcelona's crest (project rule); its monogram is used instead. */
 export const NO_LOGO = new Set(["Q7156"]);
 
-/** Players famous enough (Wikipedia languages) to be a fair Career Path puzzle. */
+/** Default: players famous enough (Wikipedia languages) to be a fair Career Path puzzle. */
 const CAREER_MIN_FAME = 30;
 
 export async function importClubLogos(db: SupabaseClient, log: Log = () => {}) {
@@ -79,7 +79,11 @@ export async function importWikipediaBadges(db: SupabaseClient, log: Log = () =>
   return saved;
 }
 
-export async function importCareers(db: SupabaseClient, log: Log = () => {}) {
+export async function importCareers(
+  db: SupabaseClient,
+  log: Log = () => {},
+  minFame = CAREER_MIN_FAME,
+) {
   // PostgREST returns at most 1,000 rows per request: page through.
   const players: { id: number; qid: string }[] = [];
   for (let from = 0; ; from += 1000) {
@@ -88,7 +92,7 @@ export async function importCareers(db: SupabaseClient, log: Log = () => {}) {
         .from("trivia_players")
         .select("id, wikidata_id")
         .eq("liga", true)
-        .gte("fame", CAREER_MIN_FAME)
+        .gte("fame", minFame)
         .not("wikidata_id", "is", null)
         .order("id")
         .range(from, from + 999),

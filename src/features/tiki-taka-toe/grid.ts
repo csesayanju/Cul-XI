@@ -13,7 +13,7 @@ export type Category =
   | { type: "nation"; key: string; label: string }
   | { type: "position"; key: "GK" | "DEF" | "MID" | "FWD"; label: string }
   | { type: "decade"; key: string; label: string }
-  | { type: "award"; key: "pichichi" | "zamora" | "liga100"; label: string };
+  | { type: "award"; key: "pichichi" | "zamora" | "liga100" | "ballondor"; label: string };
 
 export interface GridPlayer {
   id: number;
@@ -27,6 +27,7 @@ export interface GridPlayer {
   pichichis: number;
   zamoras: number;
   ligaGoals: number | null;
+  ballonPodiums?: number;
   clubs: ReadonlySet<string>;
 }
 
@@ -103,6 +104,7 @@ export const AWARD_LABELS = {
   pichichi: "Won the Pichichi",
   zamora: "Won the Zamora",
   liga100: "100+ La Liga goals",
+  ballondor: "Ballon d'Or podium",
 } as const;
 
 export function matches(p: GridPlayer, c: Category, now = new Date().getUTCFullYear()): boolean {
@@ -122,7 +124,9 @@ export function matches(p: GridPlayer, c: Category, now = new Date().getUTCFullY
         ? p.pichichis > 0
         : c.key === "zamora"
           ? p.zamoras > 0
-          : (p.ligaGoals ?? 0) >= 100;
+          : c.key === "ballondor"
+            ? (p.ballonPodiums ?? 0) > 0
+            : (p.ligaGoals ?? 0) >= 100;
   }
 }
 

@@ -64,6 +64,8 @@ const AWARD_ICONS = {
   zamora:
     "M8 21v-6L5 11V6a1 1 0 0 1 2 0v4M10 10V4a1 1 0 0 1 2 0v6m0-1V3a1 1 0 0 1 2 0v7m0-1V5a1 1 0 0 1 2 0v8l1-2a1 1 0 0 1 2 1l-3 6v3",
   liga100: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4 3 2-1 4h-4l-1-4 3-2Z",
+  // Ball on a plinth (Ballon d'Or).
+  ballondor: "M12 3a6 6 0 1 0 0 12 6 6 0 0 0 0-12ZM9 15l-1 4h8l-1-4M6 21h12",
 } as const;
 
 /** A row/column header: flag, club monogram, decade, position or trophy. */

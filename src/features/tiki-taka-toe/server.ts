@@ -120,7 +120,7 @@ async function fits(db: SupabaseClient, playerId: number, row: Category, col: Ca
     db
       .from("trivia_players")
       .select(
-        "id, name, country_code, nationality, position, barca_from, barca_to, pichichis, zamoras, liga_goals, roles",
+        "id, name, country_code, nationality, position, barca_from, barca_to, pichichis, zamoras, liga_goals, ballon_podiums, roles",
       )
       .eq("id", playerId)
       .maybeSingle(),
@@ -138,6 +138,7 @@ async function fits(db: SupabaseClient, playerId: number, row: Category, col: Ca
     pichichis: Number(p.pichichis ?? 0),
     zamoras: Number(p.zamoras ?? 0),
     ligaGoals: p.liga_goals as number | null,
+    ballonPodiums: Number(p.ballon_podiums ?? 0),
     clubs: new Set((clubs ?? []).map((c) => c.club_qid as string)),
   };
   return matches(player, row) && matches(player, col);
@@ -309,4 +310,36 @@ export async function tttTable(db: SupabaseClient, day: string) {
     guesses_left: number;
     finished: boolean;
   }[];
+}
+
+let categoryCache: { at: number; value: Awaited<ReturnType<typeof loadCategories>> } | null = null;
+
+/**
+ * `loadCategories`, kept in memory for an hour per server instance: Connections and Odd One
+ * Out need the sets on every round, and they change only when an import runs.
+ */
+export async function cachedCategories(db: SupabaseClient) {
+  if (categoryCache && Date.now() - categoryCache.at < 60 * 60 * 1000) return categoryCache.value;
+  const value = await loadCategories(db);
+  categoryCache = { at: Date.now(), value };
+  return value;
+}
+
+/** The best-known players (fame order) and each one's rank. */
+export async function fameOrder(db: SupabaseClient, limit = 1500) {
+  const ids: number[] = [];
+  for (let from = 0; from < limit; from += 1000) {
+    const { data, error } = await db
+      .from("trivia_players")
+      .select("id")
+      .contains("roles", ["player"])
+      .not("fame", "is", null)
+      .order("fame", { ascending: false })
+      .order("id")
+      .range(from, Math.min(from + 999, limit - 1));
+    if (error) throw new Error(`load fame: ${error.message}`);
+    ids.push(...data.map((r) => Number(r.id)));
+    if (data.length < 1000) break;
+  }
+  return { ids, rank: new Map(ids.map((id, i) => [id, i])) };
 }

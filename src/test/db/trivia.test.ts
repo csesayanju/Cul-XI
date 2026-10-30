@@ -183,3 +183,49 @@ describe("Career Path and Higher or Lower security", () => {
     ).rejects.toThrow(/permission denied/);
   });
 });
+
+describe("Missing XI, Connections and Odd One Out security", () => {
+  beforeAll(async () => {
+    await db.exec(`
+      insert into public.trivia_lineups (key, title, competition, year, team, players)
+        values ('final#0', 'A final', 'European Cup', 2009, 'Barcelona', '[]');
+      insert into public.lineup_daily (day, lineup_id) select '2026-11-01', id from public.trivia_lineups;
+      insert into public.lineup_attempts (user_id, day, found) values ('${BRUNO}', '2026-11-01', 4);
+      insert into public.connections_daily (day, puzzle) values ('2026-11-01', '{"groups": []}');
+      insert into public.connections_attempts (user_id, day) values ('${BRUNO}', '2026-11-01');
+      insert into public.ooo_runs (user_id, round, answer_id, streak, best)
+        select '${BRUNO}', '{"prompt": "x", "options": []}', min(id), 2, 9 from public.trivia_players;
+    `);
+  });
+
+  it("never lets players read line-ups, today's pick or today's groups", async () => {
+    for (const table of ["trivia_lineups", "lineup_daily", "connections_daily"]) {
+      await expect(count(`select * from public.${table}`, BRUNO)).rejects.toThrow(
+        /permission denied/,
+      );
+    }
+  });
+
+  it("hides the Odd One Out round and answer but shows streaks to league-mates", async () => {
+    await expect(
+      asUser(db, ADMIN, (tx) => tx.query(`select answer_id from public.ooo_runs`)),
+    ).rejects.toThrow(/permission denied/);
+    await expect(
+      asUser(db, BRUNO, (tx) => tx.query(`select round from public.ooo_runs`)),
+    ).rejects.toThrow(/permission denied/);
+    const r = await asUser(db, ADMIN, (tx) =>
+      tx.query<{ best: number }>(`select user_id, best, streak from public.ooo_runs`),
+    );
+    expect(r.rows[0]!.best).toBe(9);
+  });
+
+  it("doesn't let players write their own results", async () => {
+    for (const sql of [
+      `update public.lineup_attempts set found = 11`,
+      `update public.connections_attempts set finished = true`,
+      `update public.ooo_runs set best = 999`,
+    ]) {
+      await expect(asUser(db, BRUNO, (tx) => tx.query(sql))).rejects.toThrow(/permission denied/);
+    }
+  });
+});

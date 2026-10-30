@@ -40,7 +40,7 @@ export default async function TriviaPage() {
       <div>
         <PageTitle
           eyebrow="Daily trivia"
-          subtitle="Name the 10 people in today's list. Each slot shows a nationality; 3 wrong guesses and you're out."
+          subtitle="Name the 10 people in today's list, from Barça legends to La Liga records. Each slot shows a nationality; 3 wrong guesses and you're out."
         >
           Culé Ten
         </PageTitle>

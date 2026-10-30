@@ -74,14 +74,14 @@ export interface StaffRow {
 // Table helpers
 // ---------------------------------------------------------------------------------------
 
-const text = (el: HTMLElement | undefined) =>
+export const text = (el: HTMLElement | undefined) =>
   (el?.text ?? "")
     .replace(/\[[^\]]*\]/g, "") // footnote markers like [12]
     .replace(/[*†‡§¶#^]/g, "")
     .replace(/\s+/g, " ")
     .trim();
 
-const num = (s: string | null | undefined): number | null => {
+export const num = (s: string | null | undefined): number | null => {
   const m = (s ?? "").replace(/,/g, "").match(/-?\d+(\.\d+)?/);
   return m ? Number(m[0]) : null;
 };
@@ -126,7 +126,7 @@ export function peopleIn(cell: HTMLElement | undefined): PersonRef[] {
     }));
 }
 
-interface Table {
+export interface Table {
   /** id of the closest heading before the table, e.g. "La_Liga". */
   heading: string | null;
   headers: string[];
@@ -184,7 +184,7 @@ export function tablesOf(html: string): Table[] {
 }
 
 /** Cell under the first header matching `header`. */
-function cell(table: Table, row: HTMLElement[], header: RegExp): HTMLElement | undefined {
+export function cell(table: Table, row: HTMLElement[], header: RegExp): HTMLElement | undefined {
   const index = table.headers.findIndex((h) => header.test(h));
   return index < 0 ? undefined : row[index];
 }

@@ -9,6 +9,12 @@ foreign players apps & goals · Spanish scorers · Brazil / Netherlands apps · 
 by era (5 buckets) · captains · goals per game · most seasons as top scorer · best single
 season · managers tenure & trophies · presidents tenure & trophies.
 
+✅ La Liga (`liga:*`): all-time goals & apps, coach matches, foreign / Spanish scorers,
+scorers by debut era, Real Madrid & Athletic scorers (drafts: hat-tricks, coach wins & titles,
+Pichichi & Zamora counts, best Pichichi seasons, goals per game — ties for 10th).
+✅ Tiki-Taka-Toe across La Liga: clubs × clubs, nations, positions, Pichichi / Zamora /
+100-goal trophies, Barça decades — sets from `ttt_category_members` in one query.
+
 ## Next, from data we already have 🟢
 
 - **La Masia graduates** with most league apps (needs a youth flag — Wikidata P54 on

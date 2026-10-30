@@ -274,10 +274,14 @@ managers and presidents, parsed once from Wikipedia and stored. History lists th
 check go live automatically; the rest wait for approval on `/admin/trivia`. Current-season
 lists are generated automatically.
 
-`/trivia/grid` has **Tiki-Taka-Toe**: a daily 3×3 grid where each square needs a Barça player
-who fits its row and column: another club he played for, his nationality, position or decade
-at Barça. 9 guesses, a rarity score, and a table with your league-mates. Club histories are
-imported once from Wikidata (`scripts/trivia-clubs.ts`, also part of the player import). See
+`/trivia/grid` has **Tiki-Taka-Toe**: a daily 3×3 grid across all of La Liga where each square
+needs a player who fits its row and column: a club (La Liga's 35 biggest plus famous foreign
+ones), nationality, position, a trophy (Pichichi, Zamora, 100+ La Liga goals) or a decade at
+Barça. 9 guesses, a rarity score, and a table with your league-mates.
+
+All of La Liga (63 clubs, ~12k players, ~27k club links, records and trophies) is imported
+once from Wikipedia and Wikidata and stored locally:
+`NODE_OPTIONS=--conditions=react-server pnpm exec tsx scripts/trivia-la-liga.ts` (~2 min). See
 [`src/features/trivia/README.md`](src/features/trivia/README.md).
 
 ## Roadmap

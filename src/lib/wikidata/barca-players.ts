@@ -51,6 +51,8 @@ export interface WikidataPlayer {
   countryCode: string | null;
   position: string | null;
   birthYear: number | null;
+  /** Wikipedia language editions with an article (a fame proxy); people queries only. */
+  fame: number | null;
   barcaFrom: number | null;
   barcaTo: number | null;
   apps: number | null;
@@ -111,6 +113,7 @@ export function parseBarcaPlayers(bindings: Binding[]): WikidataPlayer[] {
         countryCode: null,
         position: null,
         birthYear: null,
+        fame: null,
         barcaFrom: null,
         barcaTo: null,
         apps: null,
@@ -131,6 +134,7 @@ export function parseBarcaPlayers(bindings: Binding[]): WikidataPlayer[] {
     }
     p.position ??= shortPosition(b.position?.value ?? null);
     p.birthYear ??= year(b.born?.value);
+    p.fame ??= int(b.sitelinks?.value);
     for (const a of (b.aliases?.value ?? "").split("|")) {
       const alias = a.trim();
       if (alias && alias !== name && !p.aliases.includes(alias)) p.aliases.push(alias);
@@ -175,6 +179,7 @@ SELECT ?player ?playerLabel
        (SAMPLE(?sportCc) AS ?sportCode) (SAMPLE(?sportLbl) AS ?sportCountry)
        (SAMPLE(?citCc) AS ?citizenCode) (SAMPLE(?citLbl) AS ?citizenCountry)
        (SAMPLE(?posLbl) AS ?position) (SAMPLE(?birth) AS ?born)
+       (SAMPLE(?links) AS ?sitelinks)
        (GROUP_CONCAT(DISTINCT ?alias; separator="|") AS ?aliases)
 WHERE {
   VALUES ?player { ${ids.map((id) => `wd:${id}`).join(" ")} }
@@ -190,16 +195,21 @@ WHERE {
   }
   OPTIONAL { ?player wdt:P413 ?pos . ?pos rdfs:label ?posLbl . FILTER(LANG(?posLbl) = "en") }
   OPTIONAL { ?player wdt:P569 ?birth . }
+  OPTIONAL { ?player wikibase:sitelinks ?links . }
   OPTIONAL { ?player skos:altLabel ?alias . FILTER(LANG(?alias) IN ("en", "es", "ca")) }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en,es,ca". }
 }
 GROUP BY ?player ?playerLabel`;
 
-/** Looks up people by Wikidata id (100 per request). */
-export async function fetchPeople(ids: string[], fetchImpl: typeof fetch = globalThis.fetch) {
+/** Looks up people by Wikidata id (`batch` per request). */
+export async function fetchPeople(
+  ids: string[],
+  fetchImpl: typeof fetch = globalThis.fetch,
+  batch = 100,
+) {
   const out: WikidataPlayer[] = [];
   const valid = [...new Set(ids)].filter((id) => /^Q\d+$/.test(id));
-  for (let i = 0; i < valid.length; i += 100) {
+  for (let i = 0; i < valid.length; i += batch) {
     const res = await fetchImpl(WIKIDATA_SPARQL, {
       method: "POST",
       headers: {
@@ -207,7 +217,7 @@ export async function fetchPeople(ids: string[], fetchImpl: typeof fetch = globa
         accept: "application/sparql-results+json",
         "content-type": "application/x-www-form-urlencoded",
       },
-      body: new URLSearchParams({ query: peopleQuery(valid.slice(i, i + 100)) }),
+      body: new URLSearchParams({ query: peopleQuery(valid.slice(i, i + batch)) }),
     });
     if (!res.ok) throw new Error(`Wikidata HTTP ${res.status}`);
     const json = (await res.json()) as { results?: { bindings?: Binding[] } };
@@ -264,4 +274,27 @@ export async function fetchPlayerClubs(fetchImpl: typeof fetch = globalThis.fetc
   if (!res.ok) throw new Error(`Wikidata HTTP ${res.status}`);
   const json = (await res.json()) as { results?: { bindings?: Binding[] } };
   return parsePlayerClubs(json.results?.bindings ?? []);
+}
+
+/** Everyone who played for a club (all P54 statements, not just the preferred ones). */
+export async function fetchClubMembers(clubId: string, fetchImpl: typeof fetch = globalThis.fetch) {
+  if (!/^Q\d+$/.test(clubId)) return [];
+  const query = `SELECT DISTINCT ?player WHERE {
+    ?player p:P54/ps:P54 wd:${clubId} ; wdt:P106 wd:Q937857 .
+  }`;
+  const res = await fetchImpl(WIKIDATA_SPARQL, {
+    method: "POST",
+    headers: {
+      "user-agent": USER_AGENT,
+      accept: "application/sparql-results+json",
+      "content-type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ query }),
+  });
+  if (!res.ok) throw new Error(`Wikidata HTTP ${res.status} (${clubId})`);
+  const json = (await res.json()) as { results?: { bindings?: Binding[] } };
+  return (json.results?.bindings ?? []).flatMap((b) => {
+    const id = b.player?.value.split("/").pop();
+    return id && /^Q\d+$/.test(id) ? [id] : [];
+  });
 }

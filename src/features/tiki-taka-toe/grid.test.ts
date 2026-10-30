@@ -5,21 +5,24 @@ import {
   buildGrid,
   categories,
   matches,
+  membersFrom,
   NEW_TTT,
   rarityScore,
   rng,
+  type Category,
   type GridPlayer,
 } from "./grid";
 
 const MADRID = "Q8682";
 const AJAX = "Q81888";
-const clubNames = new Map([
-  [MADRID, "Real Madrid Club de Fútbol"],
-  [AJAX, "AFC Ajax"],
-  ["Q1", "Some Village FC"],
+const SEVILLA = "Q8723";
+const clubLabels = new Map([
+  [MADRID, "Real Madrid"],
+  [AJAX, "Ajax"],
+  [SEVILLA, "Sevilla"],
 ]);
 
-const players: GridPlayer[] = Array.from({ length: 120 }, (_, i) => ({
+const players: GridPlayer[] = Array.from({ length: 160 }, (_, i) => ({
   id: i + 1,
   name: `Player ${i + 1}`,
   countryCode: ["ES", "NL", "BR"][i % 3]!,
@@ -27,16 +30,34 @@ const players: GridPlayer[] = Array.from({ length: 120 }, (_, i) => ({
   position: ["GK", "DEF", "MID", "FWD"][i % 4]!,
   from: 1950 + (i % 8) * 10,
   to: 1955 + (i % 8) * 10,
-  apps: 500 - i,
+  pichichis: i % 6 === 0 ? 1 : 0,
+  zamoras: 0,
+  ligaGoals: i % 6 === 0 ? 120 : 10,
   clubs: new Set([
     ...(i % 7 < 4 ? [MADRID] : []),
     ...(i % 5 < 3 ? [AJAX] : []),
+    ...(i % 3 < 2 ? [SEVILLA] : []),
     ...(i % 5 === 0 ? ["Q1"] : []),
   ]),
 }));
 
+/** Every candidate category, as the database function would return them. */
+const candidates: Category[] = [
+  { type: "club", key: MADRID, label: "" },
+  { type: "club", key: AJAX, label: "" },
+  { type: "club", key: SEVILLA, label: "" },
+  { type: "club", key: "Q1", label: "" },
+  { type: "nation", key: "ES", label: "" },
+  { type: "nation", key: "NL", label: "" },
+  { type: "nation", key: "BR", label: "" },
+  { type: "position", key: "GK", label: "" },
+  { type: "position", key: "FWD", label: "" },
+  { type: "decade", key: "1990", label: "" },
+  { type: "award", key: "pichichi", label: "" },
+];
+
 describe("matches", () => {
-  const p = { ...players[0]!, clubs: new Set([AJAX]) }; // ES, GK, 1950–1955, Ajax
+  const p = { ...players[0]!, clubs: new Set([AJAX]) }; // ES, GK, 1950–1955, Ajax, Pichichi
   it("checks each category type", () => {
     expect(matches(p, { type: "club", key: AJAX, label: "Ajax" })).toBe(true);
     expect(matches(p, { type: "club", key: MADRID, label: "Real Madrid" })).toBe(false);
@@ -44,6 +65,9 @@ describe("matches", () => {
     expect(matches(p, { type: "position", key: "GK", label: "Goalkeeper" })).toBe(true);
     expect(matches(p, { type: "decade", key: "1950", label: "1950s" })).toBe(true);
     expect(matches(p, { type: "decade", key: "1960", label: "1960s" })).toBe(false);
+    expect(matches(p, { type: "award", key: "pichichi", label: "" })).toBe(true);
+    expect(matches(p, { type: "award", key: "zamora", label: "" })).toBe(false);
+    expect(matches(p, { type: "award", key: "liga100", label: "" })).toBe(true);
   });
 
   it("counts a current player (no end year) as at Barça now", () => {
@@ -54,21 +78,28 @@ describe("matches", () => {
 });
 
 describe("categories", () => {
-  it("uses famous clubs only, with short names", () => {
-    const cats = categories(players, clubNames);
+  const { cats, sets } = categories(membersFrom(players, candidates), clubLabels);
+
+  it("labels clubs with fan names and skips clubs without one", () => {
     const clubs = cats.filter((c) => c.type === "club").map((c) => c.label);
-    expect(clubs.sort()).toEqual(["Ajax", "Real Madrid"]);
-    // Spain is left out: too many answers to be a challenge.
-    expect(cats.filter((c) => c.type === "nation").map((c) => c.key)).toEqual(["NL", "BR"]);
+    expect(clubs.sort()).toEqual(["Ajax", "Real Madrid", "Sevilla"]);
+  });
+
+  it("leaves Spain out (too many answers) and names nations and trophies", () => {
+    const nations = cats.filter((c) => c.type === "nation");
+    expect(nations.map((c) => c.key)).toEqual(["NL", "BR"]);
+    expect(nations[0]!.label).toBe("Netherlands");
+    expect(cats.find((c) => c.type === "award")?.label).toBe("Won the Pichichi");
+    expect(sets.get("award:pichichi")).toHaveLength(27);
   });
 });
 
 describe("buildGrid", () => {
-  const cats = categories(players, clubNames);
+  const { cats, sets } = categories(membersFrom(players, candidates), clubLabels);
 
   it("is deterministic per seed and every cell is fair", () => {
-    const a = buildGrid(players, cats, "2026-10-30")!;
-    const b = buildGrid(players, cats, "2026-10-30")!;
+    const a = buildGrid(sets, cats, "2026-10-30")!;
+    const b = buildGrid(sets, cats, "2026-10-30")!;
     expect(a).toEqual(b);
     expect(a.rows).toHaveLength(3);
     expect(a.cols).toHaveLength(3);
@@ -76,11 +107,20 @@ describe("buildGrid", () => {
     expect(a.answers.every((x) => x.count >= 3 && x.examples.length === 3)).toBe(true);
     const all = [...a.rows, ...a.cols];
     expect(new Set(all.map((c) => `${c.type}:${c.key}`)).size).toBe(6);
-    expect(all.filter((c) => c.type === "club").length).toBeGreaterThanOrEqual(2);
+    expect(all.filter((c) => c.type === "club").length).toBeGreaterThanOrEqual(3);
+    expect(all.filter((c) => c.type === "award").length).toBeLessThanOrEqual(1);
+  });
+
+  it("picks the best-known answers as examples (members come most famous first)", () => {
+    const g = buildGrid(sets, cats, "2026-10-30")!;
+    const row = sets.get(`${g.rows[0]!.type}:${g.rows[0]!.key}`)!;
+    const col = new Set(sets.get(`${g.cols[0]!.type}:${g.cols[0]!.key}`));
+    expect(g.answers[0]!.examples).toEqual(row.filter((id) => col.has(id)).slice(0, 3));
   });
 
   it("returns null when no fair grid exists", () => {
-    expect(buildGrid(players.slice(0, 5), cats, "x", 50)).toBeNull();
+    const few = categories(membersFrom(players.slice(0, 5), candidates), clubLabels, 1);
+    expect(buildGrid(few.sets, few.cats, "x", 50)).toBeNull();
   });
 
   it("varies by day", () => {

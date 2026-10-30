@@ -108,3 +108,33 @@ describe("Tiki-Taka-Toe security", () => {
     expect(await count("select * from public.ttt_attempts", ADMIN)).toBe(1);
   });
 });
+
+describe("La Liga trivia data", () => {
+  it("keeps the grid builder function away from players", async () => {
+    await expect(
+      asUser(db, BRUNO, (tx) =>
+        tx.query(`select * from public.ttt_category_members(array['Q8682'])`),
+      ),
+    ).rejects.toThrow(/permission denied/);
+  });
+
+  it("returns category members, most famous first", async () => {
+    await db.exec(`
+      update public.trivia_players set fame = 50, pichichis = 2 where name = 'Player 1';
+      insert into public.trivia_player_clubs (player_id, club_qid)
+        select id, 'Q8682' from public.trivia_players where name = 'Player 2';
+    `);
+    const r = await db.query<{ kind: string; key: string; ids: number[] }>(
+      `select * from public.ttt_category_members(array['Q8682'])`,
+    );
+    const club = r.rows.find((x) => x.kind === "club" && x.key === "Q8682")!;
+    const p1 = await db.query<{ id: number }>(
+      `select id from public.trivia_players where name = 'Player 1'`,
+    );
+    expect(club.ids).toHaveLength(2);
+    expect(Number(club.ids[0])).toBe(Number(p1.rows[0]!.id));
+    expect(r.rows.find((x) => x.kind === "award" && x.key === "pichichi")?.ids).toHaveLength(1);
+    // Spain is never a category.
+    expect(r.rows.some((x) => x.kind === "nation" && x.key === "ES")).toBe(false);
+  });
+});

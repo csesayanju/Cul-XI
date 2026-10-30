@@ -45,6 +45,7 @@ describe("parseBarcaPlayers", () => {
         countryCode: "AD",
         position: "DEF",
         birthYear: 2000,
+        fame: null,
         barcaFrom: 2018,
         barcaTo: 2020,
         apps: 50,

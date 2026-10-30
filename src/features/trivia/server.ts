@@ -30,7 +30,7 @@ import {
   type SlotView,
   type TriviaEntry,
 } from "./game";
-import { historyLists, type HistorySources } from "./history-lists";
+import { historyLists, type HistoryList, type HistorySources } from "./history-lists";
 import { AUTO_TEMPLATES, autoLists, wikidataDrafts, type CurrentPlayerStats } from "./lists";
 import { matchPlayer } from "./matching";
 
@@ -396,10 +396,27 @@ export async function importHistory(db: SupabaseClient) {
     const row = q ? byQid.get(q) : undefined;
     return row ? Number(row.id) : null;
   };
+  const { live, kept, drafts } = await saveCheckedLists(db, historyLists(src, resolve));
+
+  return {
+    ok: true,
+    message:
+      `Imported Barça history from Wikipedia: ${newRows.length} people added, ` +
+      `${roleUpdates} roles updated; ${live} lists live, ${drafts.length} drafts to review` +
+      (kept ? `, ${kept} reviewed lists left as they were.` : ".") +
+      (drafts.length ? ` Drafts: ${drafts.join(" · ")}` : ""),
+  };
+}
+
+/**
+ * Saves auto-checked lists: those that passed every check go live, the rest are drafts.
+ * Lists an admin approved or archived are never touched.
+ */
+export async function saveCheckedLists(db: SupabaseClient, lists: HistoryList[]) {
   let live = 0;
   let kept = 0;
   const drafts: string[] = [];
-  for (const l of historyLists(src, resolve)) {
+  for (const l of lists) {
     const { data: existing } = await db
       .from("trivia_lists")
       .select("id, status")
@@ -426,21 +443,13 @@ export async function importHistory(db: SupabaseClient) {
         )
         .select("id")
         .single(),
-      "save history list",
+      "save list",
     ) as { id: string };
     await replaceEntries(db, list.id, l.entries);
     if (ok) live++;
     else drafts.push(`${l.title} (${l.problems.join("; ")})`);
   }
-
-  return {
-    ok: true,
-    message:
-      `Imported Barça history from Wikipedia: ${newRows.length} people added, ` +
-      `${roleUpdates} roles updated; ${live} lists live, ${drafts.length} drafts to review` +
-      (kept ? `, ${kept} reviewed lists left as they were.` : ".") +
-      (drafts.length ? ` Drafts: ${drafts.join(" · ")}` : ""),
-  };
+  return { live, kept, drafts };
 }
 
 // ---------------------------------------------------------------------------------------
@@ -706,16 +715,22 @@ export async function searchPlayers(db: SupabaseClient, query: string): Promise<
   if (q.length < 2) return [];
   const { data } = await db
     .from("trivia_players")
-    .select("id, name, nationality, country_code, barca_from, barca_to, wd_apps")
+    .select("id, name, nationality, country_code, barca_from, barca_to, birth_year")
+    // Trigram-indexed; ~15k people across La Liga, most famous first.
     .ilike("search_text", `%${q.replace(/[%_\\]/g, "")}%`)
-    .order("wd_apps", { ascending: false, nullsFirst: false })
+    .order("fame", { ascending: false, nullsFirst: false })
     .limit(8);
   return (data ?? []).map((p) => ({
     id: Number(p.id),
     name: p.name as string,
     nationality: p.nationality as string | null,
     countryCode: p.country_code as string | null,
-    years: p.barca_from ? `${p.barca_from}–${p.barca_to ?? ""}` : null,
+    // Helps tell namesakes apart: Barça years, else year of birth.
+    years: p.barca_from
+      ? `Barça ${p.barca_from}–${p.barca_to ?? ""}`
+      : p.birth_year
+        ? `b. ${p.birth_year}`
+        : null,
   }));
 }
 

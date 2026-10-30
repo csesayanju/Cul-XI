@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { PGlite } from "@electric-sql/pglite";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 
 const root = fileURLToPath(new URL("../../../supabase", import.meta.url));
 
@@ -12,6 +13,7 @@ const root = fileURLToPath(new URL("../../../supabase", import.meta.url));
  * with Supabase's default grants.
  */
 const SUPABASE_STUB = `
+  create schema extensions;
   create role anon nologin;
   create role authenticated nologin;
   create role service_role nologin bypassrls;
@@ -46,7 +48,8 @@ export function migrationFiles(): string[] {
 }
 
 export async function createTestDb({ seed = true } = {}): Promise<PGlite> {
-  const db = new PGlite();
+  // pg_trgm backs the trivia search index (Supabase installs extensions in "extensions").
+  const db = new PGlite({ extensions: { pg_trgm } });
   await db.exec(SUPABASE_STUB);
   for (const file of migrationFiles()) {
     await db.exec(readFileSync(file, "utf8"));

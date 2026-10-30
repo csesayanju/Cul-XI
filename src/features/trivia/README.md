@@ -19,6 +19,11 @@ guess costs one of 3 lives. The list changes at midnight India time.
   `NODE_OPTIONS=--conditions=react-server pnpm exec tsx scripts/trivia-history.ts`. People are
   matched to the repository by Wikidata id; managers, presidents and missing players are
   added (`roles`).
+- **All of La Liga** (`scripts/trivia-la-liga.ts`, ~2 min, run locally): every club that has
+  played in La Liga and everyone who played for them (Wikidata, with fame = Wikipedia
+  sitelinks for ranking), club links, La Liga goals/apps, Pichichi and Zamora trophies, and
+  La Liga lists (records, eras, foreign/Spanish scorers, Real Madrid and Athletic scorers).
+  Search uses a trigram index and ranks by fame.
 - **Lists** (`trivia_lists` and `trivia_list_entries`):
   - **auto:** generated from current-season data (goals, assists, minutes, appearances, market
     value) and frozen when scheduled. A list is skipped when a tie for 10th place would make
@@ -45,6 +50,8 @@ guess costs one of 3 lives. The list changes at midnight India time.
 | `game.ts`                            | Pure rules: guesses, lives, public view, day/streak, daily pick (+ tests) |
 | `lists.ts`                           | Builds auto and Wikidata-draft lists (+ tests)                            |
 | `history-lists.ts`                   | Builds and checks the Wikipedia history lists (+ tests)                   |
+| `liga-lists.ts`                      | La Liga lists from Wikipedia, same checks (+ tests)                       |
+| `liga-import.ts`                     | The one-time La Liga import (server only)                                 |
 | `matching.ts`                        | Matches current players to repository records (+ tests)                   |
 | `server.ts`                          | Import, scheduling, playing, search, table (server only)                  |
 | `components/player-search.tsx`       | Autocomplete used by the game and the admin editor                        |

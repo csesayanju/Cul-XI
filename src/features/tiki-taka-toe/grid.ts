@@ -1,7 +1,7 @@
 /**
- * Tiki-Taka-Toe — pure rules (no I/O). A daily 3×3 grid: each row and column is a category
- * (another club, a nationality, a position or a decade at Barça); each cell needs a Barça
- * player who fits both. 9 guesses, each player used once.
+ * Tiki-Taka-Toe — pure rules (no I/O). A daily 3×3 grid across all of La Liga: each row and
+ * column is a category (a club, a nationality, a position, a trophy or a decade at Barça);
+ * each cell needs a player who fits both. 9 guesses, each player used once.
  */
 
 export const GUESSES = 9;
@@ -12,7 +12,8 @@ export type Category =
   | { type: "club"; key: string; label: string }
   | { type: "nation"; key: string; label: string }
   | { type: "position"; key: "GK" | "DEF" | "MID" | "FWD"; label: string }
-  | { type: "decade"; key: string; label: string };
+  | { type: "decade"; key: string; label: string }
+  | { type: "award"; key: "pichichi" | "zamora" | "liga100"; label: string };
 
 export interface GridPlayer {
   id: number;
@@ -20,9 +21,12 @@ export interface GridPlayer {
   countryCode: string | null;
   nationality: string | null;
   position: string | null;
+  /** Years at Barça (for the decade categories). */
   from: number | null;
   to: number | null;
-  apps: number | null;
+  pichichis: number;
+  zamoras: number;
+  ligaGoals: number | null;
   clubs: ReadonlySet<string>;
 }
 
@@ -95,6 +99,11 @@ export const CLUB_NAMES: Record<string, string> = {
 };
 
 const POSITION_LABELS = { GK: "Goalkeeper", DEF: "Defender", MID: "Midfielder", FWD: "Forward" };
+export const AWARD_LABELS = {
+  pichichi: "Won the Pichichi",
+  zamora: "Won the Zamora",
+  liga100: "100+ La Liga goals",
+} as const;
 
 export function matches(p: GridPlayer, c: Category, now = new Date().getUTCFullYear()): boolean {
   switch (c.type) {
@@ -108,8 +117,16 @@ export function matches(p: GridPlayer, c: Category, now = new Date().getUTCFullY
       const d = Number(c.key);
       return p.from != null && p.from <= d + 9 && (p.to ?? now) >= d;
     }
+    case "award":
+      return c.key === "pichichi"
+        ? p.pichichis > 0
+        : c.key === "zamora"
+          ? p.zamoras > 0
+          : (p.ligaGoals ?? 0) >= 100;
   }
 }
+
+export const keyOf = (c: Pick<Category, "type" | "key">) => `${c.type}:${c.key}`;
 
 /** Seeded PRNG (mulberry32), so a day always produces the same grid. */
 export function rng(seed: string) {
@@ -124,41 +141,69 @@ export function rng(seed: string) {
   };
 }
 
-/** Every category with enough players to be worth using. */
+/** Members of each candidate category, most famous first (from the database). */
+export interface CategoryMembers {
+  kind: Category["type"];
+  key: string;
+  ids: number[];
+}
+
+const nationName = (code: string) => {
+  try {
+    return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+};
+
+/**
+ * Turns member sets into categories (only those with enough players). `clubLabels` maps a
+ * club's Wikidata id to the name fans use; clubs without one are skipped.
+ */
 export function categories(
-  players: GridPlayer[],
-  clubNames: ReadonlyMap<string, string>,
+  members: CategoryMembers[],
+  clubLabels: ReadonlyMap<string, string>,
   minPlayers = 8,
-): Category[] {
-  const count = (pred: (p: GridPlayer) => boolean) => players.filter(pred).length;
-  const out: Category[] = [];
-  for (const [qid, name] of clubNames) {
-    const label = CLUB_NAMES[name];
-    if (label && count((p) => p.clubs.has(qid)) >= minPlayers) {
-      out.push({ type: "club", key: qid, label });
+): { cats: Category[]; sets: Map<string, number[]> } {
+  const cats: Category[] = [];
+  const sets = new Map<string, number[]>();
+  for (const m of members) {
+    if (m.ids.length < minPlayers) continue;
+    let c: Category | null = null;
+    if (m.kind === "club") {
+      const label = clubLabels.get(m.key);
+      if (label) c = { type: "club", key: m.key, label };
+    } else if (m.kind === "nation") {
+      // Most players are Spanish, so "Spain" would make cells trivial.
+      if (m.key !== "ES") c = { type: "nation", key: m.key, label: nationName(m.key) };
+    } else if (m.kind === "position" && m.key in POSITION_LABELS) {
+      const key = m.key as keyof typeof POSITION_LABELS;
+      c = { type: "position", key, label: POSITION_LABELS[key] };
+    } else if (m.kind === "decade") {
+      c = { type: "decade", key: m.key, label: `At Barça in the ${m.key}s` };
+    } else if (m.kind === "award" && m.key in AWARD_LABELS) {
+      const key = m.key as keyof typeof AWARD_LABELS;
+      c = { type: "award", key, label: AWARD_LABELS[key] };
     }
+    if (!c) continue;
+    cats.push(c);
+    sets.set(keyOf(c), m.ids.map(Number));
   }
-  const nations = new Map<string, string>();
-  for (const p of players)
-    if (p.countryCode && p.nationality) nations.set(p.countryCode, p.nationality);
-  for (const [code, name] of nations) {
-    // Most Barça players are Spanish, so "Spain" would make cells trivial.
-    if (code === "ES") continue;
-    if (count((p) => p.countryCode === code) >= minPlayers) {
-      out.push({ type: "nation", key: code, label: name });
-    }
-  }
-  for (const pos of ["GK", "DEF", "MID", "FWD"] as const) {
-    out.push({ type: "position", key: pos, label: POSITION_LABELS[pos] });
-  }
-  for (let d = 1950; d <= 2020; d += 10) {
-    out.push({ type: "decade", key: String(d), label: `At Barça in the ${d}s` });
-  }
-  return out;
+  return { cats, sets };
+}
+
+/** Member sets computed in memory (tests, or when the database function isn't available). */
+export function membersFrom(players: GridPlayer[], cats: Category[]): CategoryMembers[] {
+  return cats.map((c) => ({
+    kind: c.type,
+    key: c.key,
+    ids: players.filter((p) => matches(p, c)).map((p) => p.id),
+  }));
 }
 
 /** Clubs every fan knows: picked more often. */
 const MARQUEE = new Set([
+  "Barcelona",
   "Real Madrid",
   "Atlético Madrid",
   "Espanyol",
@@ -167,6 +212,8 @@ const MARQUEE = new Set([
   "Real Betis",
   "Villarreal",
   "Athletic Club",
+  "Athletic Bilbao",
+  "Real Sociedad",
   "Ajax",
   "PSV",
   "AC Milan",
@@ -189,25 +236,18 @@ const MARQUEE = new Set([
   "Santos",
 ]);
 
+const WEIGHTS = { nation: 2, award: 2, decade: 1, position: 0.6 } as const;
 const weight = (c: Category) =>
-  c.type === "club"
-    ? MARQUEE.has(c.label)
-      ? 5
-      : 1
-    : c.type === "nation"
-      ? 2
-      : c.type === "decade"
-        ? 2
-        : 1;
+  c.type === "club" ? (MARQUEE.has(c.label) ? 6 : 1.5) : WEIGHTS[c.type];
 
-const keyOf = (c: Category) => `${c.type}:${c.key}`;
+type Weigh = (c: Category) => number;
 
-function pick(cats: Category[], random: () => number): Category | null {
-  const total = cats.reduce((s, c) => s + weight(c), 0);
+function pick(cats: Category[], random: () => number, w: Weigh): Category | null {
+  const total = cats.reduce((s, c) => s + w(c), 0);
   if (total === 0) return null;
   let r = random() * total;
   for (const c of cats) {
-    r -= weight(c);
+    r -= w(c);
     if (r <= 0) return c;
   }
   return cats[cats.length - 1] ?? null;
@@ -220,12 +260,13 @@ function overlap(a: ReadonlySet<number>, b: ReadonlySet<number>) {
   return n;
 }
 
-/** Picks `n` distinct categories, keeping at most one position and one decade overall. */
+/** Picks `n` distinct categories: at most one position, one decade and one trophy overall. */
 function pickMany(
   pool: Category[],
   n: number,
   taken: Category[],
   random: () => number,
+  w: Weigh,
 ): Category[] | null {
   const out: Category[] = [];
   let candidates = [...pool];
@@ -234,9 +275,12 @@ function pickMany(
     candidates = candidates.filter(
       (c) =>
         !all.some((x) => keyOf(x) === keyOf(c)) &&
-        !((c.type === "position" || c.type === "decade") && all.some((x) => x.type === c.type)),
+        !(
+          (c.type === "position" || c.type === "decade" || c.type === "award") &&
+          all.some((x) => x.type === c.type)
+        ),
     );
-    const c = pick(candidates, random);
+    const c = pick(candidates, random, w);
     if (!c) return null;
     out.push(c);
   }
@@ -246,40 +290,36 @@ function pickMany(
 /**
  * The day's grid. Rows are picked at random (well-known clubs most often), then columns from
  * the categories that give every cell at least MIN_ANSWERS answers with all three rows. At
- * least two clubs, at most one position and one decade. Null if no fair grid is found.
+ * least three clubs; at most one position, decade and trophy. `sets` lists each category's
+ * members most famous first, so the examples are the best-known answers. Null if no fair grid.
  */
 export function buildGrid(
-  players: GridPlayer[],
+  sets: ReadonlyMap<string, readonly number[]>,
   cats: Category[],
   seed: string,
   attempts = 500,
 ): Grid | null {
   const random = rng(seed);
-  const sets = new Map(
-    cats.map((c) => [keyOf(c), new Set(players.filter((p) => matches(p, c)).map((p) => p.id))]),
-  );
-  const usable = cats.filter((c) => sets.get(keyOf(c))!.size >= MIN_ANSWERS);
+  const lookup = new Map([...sets].map(([k, ids]) => [k, new Set(ids)]));
+  const usable = cats.filter((c) => (lookup.get(keyOf(c))?.size ?? 0) >= MIN_ANSWERS);
+  // Nations with few players make for obscure squares: pick them rarely.
+  const w: Weigh = (c) =>
+    weight(c) * (c.type === "nation" && lookup.get(keyOf(c))!.size < 60 ? 0.15 : 1);
   for (let i = 0; i < attempts; i++) {
-    const rows = pickMany(usable, 3, [], random);
+    const rows = pickMany(usable, 3, [], random, w);
     if (!rows) continue;
     const fits = usable.filter((c) =>
-      rows.every((r) => overlap(sets.get(keyOf(r))!, sets.get(keyOf(c))!) >= MIN_ANSWERS),
+      rows.every((r) => overlap(lookup.get(keyOf(r))!, lookup.get(keyOf(c))!) >= MIN_ANSWERS),
     );
-    const cols = pickMany(fits, 3, rows, random);
+    const cols = pickMany(fits, 3, rows, random, w);
     if (!cols) continue;
-    if ([...rows, ...cols].filter((c) => c.type === "club").length < 2) continue;
+    if ([...rows, ...cols].filter((c) => c.type === "club").length < 3) continue;
 
-    const byId = new Map(players.map((p) => [p.id, p]));
     const answers = rows.flatMap((r) =>
       cols.map((c) => {
-        const a = sets.get(keyOf(r))!;
-        const b = sets.get(keyOf(c))!;
-        const valid = [...a].filter((id) => b.has(id)).map((id) => byId.get(id)!);
-        const examples = valid
-          .sort((x, y) => (y.apps ?? 0) - (x.apps ?? 0))
-          .slice(0, 3)
-          .map((p) => p.id);
-        return { count: valid.length, examples };
+        const other = lookup.get(keyOf(c))!;
+        const valid = sets.get(keyOf(r))!.filter((id) => other.has(id));
+        return { count: valid.length, examples: valid.slice(0, 3) };
       }),
     );
     return { rows, cols, answers };

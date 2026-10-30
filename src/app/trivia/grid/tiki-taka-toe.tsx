@@ -18,23 +18,75 @@ const dayLabel = (day: string) =>
     timeZone: "UTC",
   });
 
-/** A row/column header: flag for nations, a big decade, initials badge for clubs (no crests). */
+/** Club badge colours: a stable pick per club (original monograms, never crests). */
+const BADGES = [
+  "from-garnet-500 to-garnet-700",
+  "from-blaugrana-500 to-blaugrana-700",
+  "from-emerald-500 to-emerald-700",
+  "from-sky-500 to-sky-700",
+  "from-amber-500 to-orange-600",
+  "from-violet-500 to-violet-700",
+  "from-rose-500 to-rose-700",
+  "from-teal-500 to-teal-700",
+];
+const badgeOf = (label: string) => {
+  if (label === "Barcelona") return "from-blaugrana-500 via-blaugrana-700 to-garnet-500";
+  let h = 0;
+  for (const ch of label) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return BADGES[h % BADGES.length]!;
+};
+const monogram = (label: string) => {
+  const words = label.split(/\s+/).filter((w) => !/^(FC|CF|CD|UD|SD|RC|RCD|de|AC|AS|SS)$/i.test(w));
+  const first = words[0] ?? label;
+  return (words.length > 1 ? words.map((w) => w[0]).join("") : first.slice(0, 3)).toUpperCase();
+};
+
+function Icon({ path }: { path: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={path} />
+    </svg>
+  );
+}
+
+const AWARD_ICONS = {
+  // Boot (Pichichi), glove (Zamora), ball (100 goals).
+  pichichi: "M4 15h7l2-6 3 1-1 5h4a2 2 0 0 1 2 2v1H4v-3Z",
+  zamora:
+    "M8 21v-6L5 11V6a1 1 0 0 1 2 0v4M10 10V4a1 1 0 0 1 2 0v6m0-1V3a1 1 0 0 1 2 0v7m0-1V5a1 1 0 0 1 2 0v8l1-2a1 1 0 0 1 2 1l-3 6v3",
+  liga100: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4 3 2-1 4h-4l-1-4 3-2Z",
+} as const;
+
+/** A row/column header: flag, club monogram, decade, position or trophy. */
 function CategoryLabel({ c, compact }: { c: Category; compact?: boolean }) {
   const icon =
     c.type === "nation" ? (
       <Flag code={c.key} className="h-5 w-7" />
     ) : c.type === "club" ? (
-      <span className="flex size-7 items-center justify-center rounded-full bg-garnet-500 text-[10px] font-black text-white">
-        {c.label
-          .split(/\s+/)
-          .map((w) => w[0])
-          .join("")
-          .slice(0, 3)
-          .toUpperCase()}
+      <span
+        className={cx(
+          "flex size-8 items-center justify-center rounded-full bg-gradient-to-br text-[10px] font-black tracking-tight text-white shadow-md ring-2 ring-white/10",
+          badgeOf(c.label),
+        )}
+      >
+        {monogram(c.label)}
       </span>
     ) : c.type === "decade" ? (
       <span className="tabular text-base leading-none font-black text-gold-500">
         {c.key.slice(2)}s
+      </span>
+    ) : c.type === "award" ? (
+      <span className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-gold-300 to-gold-500 text-blaugrana-950 shadow-md">
+        <Icon path={AWARD_ICONS[c.key]} />
       </span>
     ) : (
       <span className="rounded-md bg-blaugrana-500 px-1.5 py-0.5 text-[10px] font-black text-white">
@@ -62,7 +114,11 @@ const describe = (c: Category) =>
       ? `from ${c.label}`
       : c.type === "decade"
         ? `at Barça in the ${c.key}s`
-        : `a ${c.label.toLowerCase()}`;
+        : c.type === "award"
+          ? c.key === "liga100"
+            ? "scored 100+ La Liga goals"
+            : c.label.replace(/^Won/, "won")
+          : `a ${c.label.toLowerCase()}`;
 
 /** The daily Tiki-Taka-Toe grid: tap a square, name a player who fits its row and column. */
 export function TikiTakaToe({ initial }: { initial: TttView }) {
@@ -256,7 +312,7 @@ export function TikiTakaToe({ initial }: { initial: TttView }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line sm:hidden" />
-            <p className="mb-3 text-sm text-ink-muted">A Barça player who…</p>
+            <p className="mb-3 text-sm text-ink-muted">A player who…</p>
             <div className="mb-4 grid grid-cols-2 gap-2">
               {[row, col].map((c, i) => (
                 <div key={i} className="rounded-2xl border border-line bg-surface p-3">

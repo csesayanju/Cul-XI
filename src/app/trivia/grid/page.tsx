@@ -36,7 +36,7 @@ export default async function GridPage() {
     <div>
       <PageTitle
         eyebrow="Daily trivia"
-        subtitle="Fill each square with a Barça player who fits both its row and its column. 9 guesses, each player once."
+        subtitle="Fill each square with a player who fits both its row and its column: clubs from across La Liga, nations and trophies. 9 guesses, each player once."
       >
         Tiki-Taka-Toe
       </PageTitle>

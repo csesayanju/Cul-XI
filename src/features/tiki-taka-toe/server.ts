@@ -9,10 +9,12 @@ import {
   applyTtt,
   buildGrid,
   categories,
+  CLUB_NAMES,
   matches,
   NEW_TTT,
   rarityScore,
   type Category,
+  type CategoryMembers,
   type Grid,
   type GridPlayer,
   type TttOutcome,
@@ -20,6 +22,9 @@ import {
 } from "./grid";
 
 /** All reads of the grid and all writes use the service-role client (example answers). */
+
+/** Clubs from La Liga's all-time table that can appear in grids. */
+const TOP_LIGA_CLUBS = 35;
 
 const check = <T>(r: { data: T; error: { message: string } | null }, what: string): T => {
   if (r.error) throw new Error(`${what}: ${r.error.message}`);
@@ -70,52 +75,28 @@ export async function importClubs(db: SupabaseClient) {
 // The daily grid
 // ---------------------------------------------------------------------------------------
 
-export async function loadPlayers(db: SupabaseClient) {
-  const [players, links, clubs] = await Promise.all([
-    fetchAll<{
-      id: number;
-      name: string;
-      country_code: string | null;
-      nationality: string | null;
-      position: string | null;
-      barca_from: number | null;
-      barca_to: number | null;
-      wd_apps: number | null;
-      roles: string[] | null;
-    }>(
-      db,
-      "trivia_players",
-      "id, name, country_code, nationality, position, barca_from, barca_to, wd_apps, roles",
-      "load players",
-    ),
-    fetchAll<{ player_id: number; club_qid: string }>(
-      db,
-      "trivia_player_clubs",
-      "player_id, club_qid",
-      "load player clubs",
-      ["player_id", "club_qid"],
-    ),
-    fetchAll<{ qid: string; name: string }>(db, "trivia_clubs", "qid, name", "load clubs", "qid"),
-  ]);
-  const clubsOf = new Map<number, Set<string>>();
-  for (const l of links) {
-    const id = Number(l.player_id);
-    clubsOf.set(id, (clubsOf.get(id) ?? new Set()).add(l.club_qid));
+/**
+ * Every candidate category with its members, in one database round trip
+ * (`ttt_category_members`). Clubs: all La Liga clubs plus famous foreign ones.
+ */
+export async function loadCategories(db: SupabaseClient) {
+  const clubs = await fetchAll<{
+    qid: string;
+    name: string;
+    short_name: string | null;
+    liga: boolean;
+    liga_rank: number | null;
+  }>(db, "trivia_clubs", "qid, name, short_name, liga, liga_rank", "load clubs", "qid");
+  const labels = new Map<string, string>();
+  for (const c of clubs) {
+    // La Liga's biggest clubs (all-time table) and famous foreign ones; not the obscure.
+    const big = c.liga && (c.liga_rank ?? 99) <= TOP_LIGA_CLUBS;
+    const label = big ? (c.short_name ?? c.name) : !c.liga ? CLUB_NAMES[c.name] : undefined;
+    if (label) labels.set(c.qid, label);
   }
-  const gridPlayers: GridPlayer[] = players
-    .filter((p) => (p.roles ?? ["player"]).includes("player"))
-    .map((p) => ({
-      id: Number(p.id),
-      name: p.name,
-      countryCode: p.country_code,
-      nationality: p.nationality,
-      position: p.position,
-      from: p.barca_from,
-      to: p.barca_to,
-      apps: p.wd_apps,
-      clubs: clubsOf.get(Number(p.id)) ?? new Set(),
-    }));
-  return { players: gridPlayers, clubNames: new Map(clubs.map((c) => [c.qid, c.name])) };
+  const { data, error } = await db.rpc("ttt_category_members", { club_qids: [...labels.keys()] });
+  if (error) throw new Error(`load categories: ${error.message}`);
+  return categories((data ?? []) as CategoryMembers[], labels);
 }
 
 /** Today's grid, generated (deterministically from the day) and frozen on first request. */
@@ -123,8 +104,8 @@ export async function ensureGrid(db: SupabaseClient, day: string): Promise<Grid 
   const { data } = await db.from("ttt_daily").select("grid").eq("day", day).maybeSingle();
   if (data) return data.grid as Grid;
 
-  const { players, clubNames } = await loadPlayers(db);
-  const grid = buildGrid(players, categories(players, clubNames), `ttt:${day}`);
+  const { cats, sets } = await loadCategories(db);
+  const grid = buildGrid(sets, cats, `ttt:${day}`);
   if (!grid) return null;
   await db.from("ttt_daily").upsert({ day, grid }, { onConflict: "day", ignoreDuplicates: true });
   const { data: saved } = await db.from("ttt_daily").select("grid").eq("day", day).single();
@@ -136,12 +117,14 @@ async function fits(db: SupabaseClient, playerId: number, row: Category, col: Ca
   const [{ data: p }, { data: clubs }] = await Promise.all([
     db
       .from("trivia_players")
-      .select("id, name, country_code, nationality, position, barca_from, barca_to, wd_apps")
+      .select(
+        "id, name, country_code, nationality, position, barca_from, barca_to, pichichis, zamoras, liga_goals, roles",
+      )
       .eq("id", playerId)
       .maybeSingle(),
     db.from("trivia_player_clubs").select("club_qid").eq("player_id", playerId),
   ]);
-  if (!p) return false;
+  if (!p || !((p.roles as string[] | null) ?? ["player"]).includes("player")) return false;
   const player: GridPlayer = {
     id: Number(p.id),
     name: p.name as string,
@@ -150,7 +133,9 @@ async function fits(db: SupabaseClient, playerId: number, row: Category, col: Ca
     position: p.position as string | null,
     from: p.barca_from as number | null,
     to: p.barca_to as number | null,
-    apps: p.wd_apps as number | null,
+    pichichis: Number(p.pichichis ?? 0),
+    zamoras: Number(p.zamoras ?? 0),
+    ligaGoals: p.liga_goals as number | null,
     clubs: new Set((clubs ?? []).map((c) => c.club_qid as string)),
   };
   return matches(player, row) && matches(player, col);

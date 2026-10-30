@@ -34,8 +34,8 @@ export default async function CreditsPage() {
       .order("name"),
     db
       .from("trivia_clubs")
-      .select("qid, name, short_name, logo_file")
-      .not("logo_file", "is", null)
+      .select("qid, name, short_name, logo_file, logo_page")
+      .or("logo_file.not.is.null,logo_page.not.is.null")
       .order("name"),
   ]);
   const rows = (data ?? []) as CreditRow[];
@@ -44,9 +44,12 @@ export default async function CreditsPage() {
       qid: string;
       name: string;
       short_name: string | null;
-      logo_file: string;
+      logo_file: string | null;
+      logo_page: string | null;
     }[]
   ).filter((l) => !NO_LOGO.has(l.qid));
+  const commonsLogos = clubLogos.filter((l) => l.logo_file);
+  const wikipediaLogos = clubLogos.filter((l) => !l.logo_file && l.logo_page);
 
   return (
     <>
@@ -94,15 +97,14 @@ export default async function CreditsPage() {
           <h2 className="mt-8 mb-2 text-lg font-bold">Club badges</h2>
           <Card className="space-y-2 text-sm">
             <p>
-              Badges in the trivia games are free files from Wikimedia Commons (no FC Barcelona
-              crest is ever shown). Follow each link for the author and licence; the clubs own their
-              trademarks.
+              Club badges in the trivia games identify the clubs; each club owns its crest and
+              trademarks. No FC Barcelona crest is ever shown. Free files from Wikimedia Commons:
             </p>
             <ul className="flex flex-wrap gap-x-3 gap-y-1">
-              {clubLogos.map((l) => (
+              {commonsLogos.map((l) => (
                 <li key={l.qid}>
                   <a
-                    href={commonsPage(l.logo_file)}
+                    href={commonsPage(l.logo_file!)}
                     target="_blank"
                     rel="noreferrer"
                     className="underline"
@@ -112,6 +114,23 @@ export default async function CreditsPage() {
                 </li>
               ))}
             </ul>
+            {wikipediaLogos.length > 0 && (
+              <>
+                <p className="pt-2">
+                  Crests shown from the clubs&apos; English Wikipedia articles (linked, not copied;
+                  see each file page for its source and use notes):
+                </p>
+                <ul className="flex flex-wrap gap-x-3 gap-y-1">
+                  {wikipediaLogos.map((l) => (
+                    <li key={l.qid}>
+                      <a href={l.logo_page!} target="_blank" rel="noreferrer" className="underline">
+                        {l.short_name ?? l.name}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </Card>
         </>
       )}

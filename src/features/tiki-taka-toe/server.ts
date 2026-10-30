@@ -205,14 +205,14 @@ async function view(
           data: [] as { id: number; name: string; country_code: string | null }[],
         }),
     db.from("ttt_attempts").select("cells").eq("day", day),
-    db
-      .from("trivia_clubs")
-      .select("qid, logo_file")
-      .in("qid", clubKeys)
-      .not("logo_file", "is", null),
+    db.from("trivia_clubs").select("qid, logo_file, logo_url").in("qid", clubKeys),
   ]);
+  // A free Commons logo when there is one, else the crest from the club's Wikipedia article.
   const badges = Object.fromEntries(
-    (logos ?? []).map((l) => [l.qid as string, commonsThumb(l.logo_file as string)]),
+    (logos ?? []).flatMap((l) => {
+      const url = l.logo_file ? commonsThumb(l.logo_file as string) : (l.logo_url as string | null);
+      return url ? [[l.qid as string, url]] : [];
+    }),
   );
   const byId = new Map((people ?? []).map((p) => [Number(p.id), p]));
 

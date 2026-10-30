@@ -109,7 +109,7 @@ async function view(
       .single(),
     db
       .from("trivia_careers")
-      .select("seq, from_year, to_year, trivia_clubs(qid, name, short_name, logo_file)")
+      .select("seq, from_year, to_year, trivia_clubs(qid, name, short_name, logo_file, logo_url)")
       .eq("player_id", answerId)
       .order("seq"),
     state.guesses.length
@@ -133,13 +133,15 @@ async function view(
           name: string;
           short_name: string | null;
           logo_file: string | null;
+          logo_url: string | null;
         } | null;
       }[]
     ).map((s) => {
       const c = s.trivia_clubs;
       return {
         club: c ? (c.short_name ?? CLUB_NAMES[c.name] ?? tidyClub(c.name)) : "?",
-        logo: c?.logo_file && !NO_LOGO.has(c.qid) ? commonsThumb(c.logo_file) : null,
+        logo:
+          !c || NO_LOGO.has(c.qid) ? null : c.logo_file ? commonsThumb(c.logo_file) : c.logo_url,
         from: s.from_year,
         to: s.to_year,
       };

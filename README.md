@@ -206,7 +206,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://your-app.vercel.app/api/syn
    - a **secret** `CRON_SECRET` with the same value as in Vercel
 
    The workflow runs line-ups and stats every 15 minutes; fixtures, squads (with form-based
-   prices) and player photos daily at 05:30 UTC; and deletes unused guest accounts every 2 hours. Each job only calls Highlightly when something is due, so most runs use no requests. You
+   prices) and player photos daily at 05:30 UTC; and deletes guest accounts nobody has used for 7 days (checked every 2 hours). Each job only calls Highlightly when something is due, so most runs use no requests. You
    can also run it by hand from the **Actions** tab (**Sync match data → Run workflow**).
 
 ## Project structure
@@ -258,8 +258,8 @@ scripts/check-api.ts          # pnpm check:api
   (free licences, credited in the app and on `/credits`). A photo is only used when the
   Wikipedia article is clearly the same footballer at the same club and the image file is named
   after them; otherwise initials show. Admins can set, fix or remove a photo on `/admin`.
-- **Guest accounts:** guests who haven't joined a league or saved a team within 2 hours are
-  deleted automatically (every 2 hours).
+- **Guest accounts:** a guest account is kept while it's used; after 7 days without visiting
+  the app it's deleted automatically ("last seen" is refreshed at most twice a day).
 - **Database types:** these are hand-typed. Run
   `supabase gen types typescript --linked > src/lib/supabase/database.types.ts` to generate
   them.

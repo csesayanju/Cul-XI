@@ -310,3 +310,19 @@ describe("sign-up: names and the Global league", () => {
     ).rejects.toThrow(/duplicate key/);
   });
 });
+
+describe("last seen (guest cleanup)", () => {
+  it("refreshes your own last-seen time at most every 12 hours", async () => {
+    await db.query(
+      `update public.profiles set last_seen_at = now() - interval '3 days' where display_name = 'Bruno'`,
+    );
+    await asUser(db, BRUNO, async (tx) => {
+      await tx.query(`select public.touch_last_seen()`);
+      const r = await tx.query<{ fresh: boolean }>(
+        `select last_seen_at > now() - interval '1 minute' as fresh from public.profiles where id = $1`,
+        [BRUNO],
+      );
+      expect(r.rows[0]!.fresh).toBe(true);
+    });
+  });
+});

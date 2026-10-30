@@ -3,6 +3,7 @@ import "server-only";
 import { timingSafeEqual } from "node:crypto";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { cache } from "react";
 
 import { serverEnv } from "@/lib/env/server";
@@ -12,7 +13,11 @@ export interface Profile {
   id: string;
   display_name: string;
   is_admin: boolean;
+  last_seen_at: string;
 }
+
+/** How often "last seen" is refreshed (guests are cleaned up after 7 days away). */
+const SEEN_EVERY_MS = 12 * 60 * 60 * 1000;
 
 export interface SessionUser {
   id: string;
@@ -38,9 +43,17 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, display_name, is_admin")
+    .select("id, display_name, is_admin, last_seen_at")
     .eq("id", claims.sub)
     .maybeSingle();
+
+  // Keep "last seen" fresh (at most twice a day), after the response so it never slows a page.
+  const seen = Date.parse((profile as Profile | null)?.last_seen_at ?? "");
+  if (profile && !(Date.now() - seen < SEEN_EVERY_MS)) {
+    after(async () => {
+      await supabase.rpc("touch_last_seen");
+    });
+  }
 
   return {
     id: claims.sub,

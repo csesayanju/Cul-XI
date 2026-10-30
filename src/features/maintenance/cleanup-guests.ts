@@ -6,43 +6,46 @@ import type { SyncResult } from "@/features/fantasy/sync/context";
 
 import { selectStaleGuests, type GuestUser } from "./stale-guests";
 
-/** Guests older than this who never joined a league or saved a team are deleted. */
-export const GUEST_MAX_AGE_MS = 2 * 60 * 60 * 1000;
+/** Guests are deleted after this long without using the app. */
+export const GUEST_MAX_IDLE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const PAGE_SIZE = 1000;
 
 /**
- * Deletes unused guest (anonymous) accounts. Their profile rows are removed by the
- * `on delete cascade` foreign key. Uses the service-role client (auth admin API).
+ * Deletes guest (anonymous) accounts nobody has used for 7 days. "Used" = last seen by the
+ * app (profiles.last_seen_at, refreshed while signed in). Their data goes with them via
+ * `on delete cascade`. Uses the service-role client (auth admin API).
  */
 export async function cleanupGuests(db: SupabaseClient, now = new Date()): Promise<SyncResult> {
-  const users: GuestUser[] = [];
+  const guests: GuestUser[] = [];
   for (let page = 1; ; page++) {
     const { data, error } = await db.auth.admin.listUsers({ page, perPage: PAGE_SIZE });
     if (error) throw new Error(`list users: ${error.message}`);
-    users.push(
-      ...data.users.map((u) => ({
-        id: u.id,
-        isAnonymous: u.is_anonymous === true,
-        createdAt: u.created_at,
-      })),
-    );
+    for (const u of data.users) {
+      if (u.is_anonymous === true) {
+        guests.push({ id: u.id, isAnonymous: true, createdAt: u.created_at, lastSeenAt: null });
+      }
+    }
     if (data.users.length < PAGE_SIZE) break;
   }
-
-  const guests = users.filter((u) => u.isAnonymous);
   if (guests.length === 0) return { ok: true, message: "No guest accounts." };
 
-  const guestIds = guests.map((g) => g.id);
-  const [members, teams] = await Promise.all([
-    db.from("league_members").select("user_id").in("user_id", guestIds),
-    db.from("fantasy_teams").select("user_id").in("user_id", guestIds),
-  ]);
-  if (members.error) throw new Error(`load members: ${members.error.message}`);
-  if (teams.error) throw new Error(`load teams: ${teams.error.message}`);
-  const active = new Set([...members.data, ...teams.data].map((r) => r.user_id as string));
+  // Last seen, in chunks (keeps the request URL short).
+  const seen = new Map<string, string>();
+  for (let i = 0; i < guests.length; i += 200) {
+    const { data, error } = await db
+      .from("profiles")
+      .select("id, last_seen_at")
+      .in(
+        "id",
+        guests.slice(i, i + 200).map((g) => g.id),
+      );
+    if (error) throw new Error(`load last seen: ${error.message}`);
+    for (const r of data) seen.set(r.id as string, r.last_seen_at as string);
+  }
+  for (const g of guests) g.lastSeenAt = seen.get(g.id) ?? null;
 
-  const stale = selectStaleGuests(guests, active, now, GUEST_MAX_AGE_MS);
+  const stale = selectStaleGuests(guests, now, GUEST_MAX_IDLE_MS);
   let deleted = 0;
   for (const id of stale) {
     const { error } = await db.auth.admin.deleteUser(id);
@@ -51,7 +54,7 @@ export async function cleanupGuests(db: SupabaseClient, now = new Date()): Promi
 
   return {
     ok: true,
-    message: `Guests: ${guests.length} total, ${active.size} active, deleted ${deleted} unused${
+    message: `Guests: ${guests.length} total, deleted ${deleted} not seen for 7 days${
       deleted < stale.length ? ` (${stale.length - deleted} failed)` : ""
     }.`,
   };

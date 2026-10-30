@@ -10,6 +10,12 @@ export const USER_AGENT = "CuleXI/1.0 (private fantasy app; https://github.com/c
 /** FC Barcelona (men's football club). */
 export const FC_BARCELONA = "Q7156";
 
+/**
+ * England, Scotland, Wales and Northern Ireland play as separate football nations but have no
+ * ISO country code of their own: use their ISO 3166-2 codes (flagcdn has their flags).
+ */
+const HOME_NATIONS = '(wd:Q21 "GB-ENG") (wd:Q22 "GB-SCT") (wd:Q25 "GB-WLS") (wd:Q26 "GB-NIR")';
+
 export const BARCA_PLAYERS_QUERY = `
 SELECT ?player ?playerLabel ?st ?start ?end ?apps ?goals
        (SAMPLE(?sportCc) AS ?sportCode) (SAMPLE(?sportLbl) AS ?sportCountry)
@@ -26,7 +32,7 @@ WHERE {
   OPTIONAL { ?st pq:P1351 ?goals . }
   OPTIONAL {
     ?player wdt:P1532 ?sportNation .
-    ?sportNation wdt:P297 ?sportCc .
+    { ?sportNation wdt:P297 ?sportCc . } UNION { VALUES (?sportNation ?sportCc) { ${HOME_NATIONS} } }
     ?sportNation rdfs:label ?sportLbl . FILTER(LANG(?sportLbl) = "en")
   }
   OPTIONAL {
@@ -170,7 +176,7 @@ export async function fetchBarcaPlayers(fetchImpl: typeof fetch = globalThis.fet
   );
   if (!res.ok) throw new Error(`Wikidata HTTP ${res.status}`);
   const json = (await res.json()) as { results?: { bindings?: Binding[] } };
-  return parseBarcaPlayers(json.results?.bindings ?? []);
+  return refineHomeNations(parseBarcaPlayers(json.results?.bindings ?? []), fetchImpl);
 }
 
 /** Same fields for given people (managers, presidents, players missing a Barça stint). */
@@ -185,7 +191,7 @@ WHERE {
   VALUES ?player { ${ids.map((id) => `wd:${id}`).join(" ")} }
   OPTIONAL {
     ?player wdt:P1532 ?sportNation .
-    ?sportNation wdt:P297 ?sportCc .
+    { ?sportNation wdt:P297 ?sportCc . } UNION { VALUES (?sportNation ?sportCc) { ${HOME_NATIONS} } }
     ?sportNation rdfs:label ?sportLbl . FILTER(LANG(?sportLbl) = "en")
   }
   OPTIONAL {
@@ -223,7 +229,7 @@ export async function fetchPeople(
     const json = (await res.json()) as { results?: { bindings?: Binding[] } };
     out.push(...parseBarcaPlayers(json.results?.bindings ?? []));
   }
-  return out;
+  return refineHomeNations(out, fetchImpl);
 }
 
 /** Every other club (association football clubs only) that Barça players played for. */
@@ -297,4 +303,54 @@ export async function fetchClubMembers(clubId: string, fetchImpl: typeof fetch =
     const id = b.player?.value.split("/").pop();
     return id && /^Q\d+$/.test(id) ? [id] : [];
   });
+}
+
+const HOME_NATION_NAMES: Record<string, string> = {
+  "GB-ENG": "England",
+  "GB-SCT": "Scotland",
+  "GB-WLS": "Wales",
+  "GB-NIR": "Northern Ireland",
+};
+
+/**
+ * UK players without a "country for sport" come back as United Kingdom (GB); give them the
+ * home nation they were born in instead. A separate, small query (walking up from birthplaces
+ * is too heavy for the main ones), in the written order (optimizer off) so it stays fast.
+ */
+export async function refineHomeNations<
+  T extends Pick<WikidataPlayer, "wikidataId" | "countryCode" | "nationality">,
+>(players: T[], fetchImpl: typeof fetch = globalThis.fetch): Promise<T[]> {
+  const uk = players.filter((p) => p.countryCode === "GB");
+  for (let i = 0; i < uk.length; i += 50) {
+    const batch = uk.slice(i, i + 50);
+    const query = `SELECT ?player ?code WHERE {
+      hint:Query hint:optimizer "None" .
+      VALUES ?player { ${batch.map((p) => `wd:${p.wikidataId}`).join(" ")} }
+      ?player wdt:P19 ?birth .
+      ?birth wdt:P131* ?home .
+      VALUES (?home ?code) { ${HOME_NATIONS} }
+    }`;
+    const res = await fetchImpl(WIKIDATA_SPARQL, {
+      method: "POST",
+      headers: {
+        "user-agent": USER_AGENT,
+        accept: "application/sparql-results+json",
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ query }),
+    });
+    if (!res.ok) continue; // keep United Kingdom rather than fail an import
+    const json = (await res.json()) as { results?: { bindings?: Binding[] } };
+    const codes = new Map(
+      (json.results?.bindings ?? []).map((b) => [b.player!.value.split("/").pop()!, b.code!.value]),
+    );
+    for (const p of batch) {
+      const code = codes.get(p.wikidataId);
+      if (code) {
+        p.countryCode = code;
+        p.nationality = HOME_NATION_NAMES[code] ?? p.nationality;
+      }
+    }
+  }
+  return players;
 }

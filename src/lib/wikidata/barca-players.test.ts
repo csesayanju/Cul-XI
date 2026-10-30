@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseBarcaPlayers, shortPosition } from "./barca-players";
+import { parseBarcaPlayers, refineHomeNations, shortPosition } from "./barca-players";
 
 const v = (value: string) => ({ value });
 const P = (id: string) => v(`http://www.wikidata.org/entity/${id}`);
@@ -68,4 +68,30 @@ describe("shortPosition", () => {
     ["centre-forward", "FWD"],
     ["manager", null],
   ])("%s -> %s", (label, pos) => expect(shortPosition(label)).toBe(pos));
+});
+
+describe("refineHomeNations", () => {
+  it("turns United Kingdom into the home nation a player was born in", async () => {
+    const fakeFetch = (async () =>
+      new Response(
+        JSON.stringify({
+          results: {
+            bindings: [
+              { player: { value: "http://www.wikidata.org/entity/Q1" }, code: { value: "GB-SCT" } },
+            ],
+          },
+        }),
+      )) as unknown as typeof fetch;
+    const players = [
+      { wikidataId: "Q1", countryCode: "GB", nationality: "United Kingdom" },
+      { wikidataId: "Q2", countryCode: "GB", nationality: "United Kingdom" },
+      { wikidataId: "Q3", countryCode: "ES", nationality: "Spain" },
+    ];
+    await refineHomeNations(players, fakeFetch);
+    expect(players.map((p) => `${p.countryCode} ${p.nationality}`)).toEqual([
+      "GB-SCT Scotland",
+      "GB United Kingdom",
+      "ES Spain",
+    ]);
+  });
 });

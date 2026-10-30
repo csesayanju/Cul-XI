@@ -152,7 +152,15 @@ export interface CategoryMembers {
   ids: number[];
 }
 
+const HOME_NATIONS: Record<string, string> = {
+  "GB-ENG": "England",
+  "GB-SCT": "Scotland",
+  "GB-WLS": "Wales",
+  "GB-NIR": "Northern Ireland",
+};
+
 const nationName = (code: string) => {
+  if (HOME_NATIONS[code]) return HOME_NATIONS[code];
   try {
     return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code;
   } catch {

@@ -5,7 +5,8 @@ import { cx } from "./ui";
  * so images are used instead; unknown codes fall back to a neutral chip.
  */
 export function Flag({ code, className }: { code: string | null | undefined; className?: string }) {
-  const valid = !!code && /^[A-Za-z]{2}$/.test(code);
+  // Countries (ES) and the UK's football nations (GB-ENG, GB-SCT, GB-WLS, GB-NIR).
+  const valid = !!code && /^[A-Za-z]{2}(-[A-Za-z]{3})?$/.test(code);
   if (!valid) {
     return (
       <span

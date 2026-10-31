@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 
+import { LiveBadge, LiveRefresh } from "@/components/live-refresh";
 import { LocalTime } from "@/components/local-time";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { Badge, Card, cx, Notice, PageTitle, SectionTitle } from "@/components/ui";
@@ -31,8 +33,10 @@ export default async function PickPage({
   const matchId = Number.parseInt(id, 10);
   if (!Number.isFinite(matchId)) notFound();
 
-  // Around kickoff, fetch line-ups if they're out (GitHub's schedule can be late).
-  const [user] = await Promise.all([requireUser(), freshenMatch(matchId)]);
+  // Around kickoff, fetch line-ups if they're out (GitHub's schedule can be late); live
+  // points and final stats are fetched after the response.
+  const [user] = await Promise.all([requireUser(), freshenMatch(matchId, { only: "lineups" })]);
+  after(() => freshenMatch(matchId));
   const supabase = await createClient();
   // One parallel round of queries (the match isn't needed to start the others).
   const [match, players, team, points] = await Promise.all([
@@ -170,15 +174,31 @@ export default async function PickPage({
     </section>
   );
 
+  const finished = ["FT", "AET", "PEN", "AWD"].includes(match.status);
+  const live = !finished && !["PST", "CANC", "ABD"].includes(match.status);
+  const score =
+    match.barca_goals != null && match.opponent_goals != null
+      ? match.is_home
+        ? `${match.barca_goals}–${match.opponent_goals}`
+        : `${match.opponent_goals}–${match.barca_goals}`
+      : null;
+
   return (
     <>
       {header}
+      {live && <LiveRefresh />}
       <div className="mb-3 flex items-center gap-2 rounded-xl border border-line bg-surface-raised px-3 py-2 text-sm">
-        <span aria-hidden>🔒</span>
-        <span className="text-ink-muted">
-          Teams locked at kickoff.{" "}
-          {pointsByUser.size === 0 ? "Points arrive after full time." : "Points are in."}
+        {live ? <LiveBadge /> : <span aria-hidden>🔒</span>}
+        <span className="min-w-0 flex-1 text-ink-muted">
+          {live
+            ? match.points_live
+              ? "Points update live, every few minutes. Final at full time."
+              : "Teams are locked. Live points start a few minutes in."
+            : pointsByUser.size === 0
+              ? "Teams locked. Points arrive shortly after full time."
+              : "Final points."}
         </span>
+        {score && <span className="tabular shrink-0 font-black">{score}</span>}
       </div>
       {!shown ? (
         <Notice>
@@ -192,7 +212,10 @@ export default async function PickPage({
             <span className="font-semibold">
               {mine ? "Your points" : `${viewing?.name}'s points`}
             </span>
-            <span className="text-2xl font-black">{shownPoints ? shownPoints.total : "—"}</span>
+            <span className="flex items-center gap-2">
+              {match.points_live && shownPoints && <LiveBadge />}
+              <span className="text-2xl font-black">{shownPoints ? shownPoints.total : "—"}</span>
+            </span>
           </Card>
           {breakdown && !breakdown.valid && (
             <Notice tone="error">

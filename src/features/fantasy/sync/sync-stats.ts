@@ -14,14 +14,23 @@ import {
 import { upsertPlayers } from "./players";
 import { recalculatePoints } from "./recalculate-points";
 
+/** Match states during which live points are updated. */
+const IN_PLAY = ["1H", "HT", "2H", "ET", "BT", "P", "LIVE"];
+/** Live updates stop when fewer daily requests than this remain (kept for full time). */
+export const LIVE_QUOTA_RESERVE = 12;
+
 /**
  * After full time: fetch the match details (final state, score and events — 1 request, cached
  * forever once finished) and the player box score (1 request, cached forever), store the stats
  * — never overwriting rows an admin entered manually — and recalculate points.
+ *
+ * `live`: during the match, the same with in-play data — never cached, points marked
+ * provisional (`points_live`), and skipped when the daily quota runs low. The full-time run
+ * replaces them with final points.
  */
 export async function syncStats(
   ctx: SyncContext,
-  { matchId }: { matchId?: number } = {},
+  { matchId, live = false }: { matchId?: number; live?: boolean } = {},
 ): Promise<SyncResult> {
   const { db, api, config, now } = ctx;
 
@@ -41,7 +50,7 @@ export async function syncStats(
   const results: string[] = [];
   for (let match of matches) {
     const { data: details } = await api.match(match.api_fixture_id, {
-      maxAgeMs: HOUR,
+      maxAgeMs: live ? 0 : HOUR,
       shouldCache: (d) => !!d[0] && isFinished(statusCode(d[0].state.description)),
     });
     const detail = details[0];
@@ -50,14 +59,24 @@ export async function syncStats(
       check(await db.from("matches").update(row).eq("id", match.id), "update match");
       match = { ...match, ...row };
     }
-    if (!isFinished(match.status)) {
+    const finished = isFinished(match.status);
+    if (!finished && !(live && IN_PLAY.includes(match.status))) {
       results.push(`${match.opponent_name}: not finished (status ${match.status})`);
       continue;
     }
+    const quota = api.getQuota().dailyRemaining;
+    if (!finished && quota != null && quota < LIVE_QUOTA_RESERVE) {
+      results.push(`${match.opponent_name}: live update skipped (${quota} requests left today)`);
+      continue;
+    }
 
-    const { data } = await api.boxScore(match.api_fixture_id, {
-      shouldCache: (d) => d.some((t) => t.players.length > 0),
-    });
+    // In-play box scores change every minute: never cache them (full time fetches afresh).
+    const { data } = await api.boxScore(
+      match.api_fixture_id,
+      finished
+        ? { shouldCache: (d) => d.some((t) => t.players.length > 0) }
+        : { force: true, shouldCache: () => false },
+    );
     if (!data.some((t) => t.players.length > 0)) {
       results.push(`${match.opponent_name}: stats not available yet`);
       continue;
@@ -135,7 +154,14 @@ export async function syncStats(
       );
     }
     check(
-      await db.from("matches").update({ stats_synced_at: now.toISOString() }).eq("id", match.id),
+      await db
+        .from("matches")
+        .update(
+          finished
+            ? { stats_synced_at: now.toISOString(), points_live: false }
+            : { points_live: true },
+        )
+        .eq("id", match.id),
       "mark stats synced",
     );
 

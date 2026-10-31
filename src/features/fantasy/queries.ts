@@ -20,10 +20,12 @@ export interface MatchSummary {
   barca_goals: number | null;
   opponent_goals: number | null;
   points_calculated_at: string | null;
+  /** Points are provisional, from in-play stats (until the full-time sync). */
+  points_live: boolean;
 }
 
 const MATCH_FIELDS =
-  "id, competition, opponent_name, opponent_team_id, is_home, venue, kickoff_at, status, barca_goals, opponent_goals, points_calculated_at";
+  "id, competition, opponent_name, opponent_team_id, is_home, venue, kickoff_at, status, barca_goals, opponent_goals, points_calculated_at, points_live";
 
 export async function listMatches(db: SupabaseClient, now = new Date()) {
   const recentCutoff = new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString();

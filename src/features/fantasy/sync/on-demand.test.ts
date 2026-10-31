@@ -20,9 +20,15 @@ describe("freshenNeed", () => {
     expect(freshenNeed(m({ lineups_synced_at: "x" }), ko - 40 * min)).toBeNull();
   });
 
-  it("wants stats from two hours after kickoff for two days", () => {
+  it("wants live points during the match", () => {
     const done = { lineups_synced_at: "x" };
-    expect(freshenNeed(m(done), ko + 90 * min)).toBeNull();
+    expect(freshenNeed(m(done), ko + 2 * min)).toBeNull();
+    expect(freshenNeed(m(done), ko + 30 * min)).toBe("live");
+    expect(freshenNeed(m(done), ko + 110 * min)).toBe("live");
+  });
+
+  it("wants final stats from two hours after kickoff for two days", () => {
+    const done = { lineups_synced_at: "x" };
     expect(freshenNeed(m(done), ko + 150 * min)).toBe("stats");
     expect(freshenNeed(m({ ...done, stats_synced_at: "x" }), ko + 150 * min)).toBeNull();
     expect(freshenNeed(m(done), ko + 50 * 60 * min)).toBeNull();

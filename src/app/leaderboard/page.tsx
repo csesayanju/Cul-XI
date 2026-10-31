@@ -48,7 +48,7 @@ export default async function LeaderboardPage({
 }) {
   const user = await requireUser();
   const { match, league: leagueParam } = await searchParams;
-  // After the response: fetch stats and points for a just-finished match, if they're due.
+  // After the response: live points / final stats for matches around now, if they're due.
   after(freshenRecent);
   const supabase = await createClient();
 
@@ -59,7 +59,7 @@ export default async function LeaderboardPage({
     supabase.from("fantasy_points").select("user_id, match_id, total_points"),
     supabase
       .from("matches")
-      .select("id, opponent_name, kickoff_at")
+      .select("id, opponent_name, kickoff_at, points_live")
       .not("points_calculated_at", "is", null)
       .order("kickoff_at", { ascending: false }),
   ]);
@@ -87,6 +87,7 @@ export default async function LeaderboardPage({
     id: number;
     opponent_name: string;
     kickoff_at: string;
+    points_live: boolean;
   }[];
   const selectedMatch = match ? matches.find((m) => m.id === Number(match)) : undefined;
 
@@ -155,7 +156,7 @@ export default async function LeaderboardPage({
         {matches.map((m) =>
           tab(
             withLeague(`/leaderboard?match=${m.id}`),
-            `vs ${m.opponent_name}`,
+            `${m.points_live ? "🔴 " : ""}vs ${m.opponent_name}`,
             selectedMatch?.id === m.id,
           ),
         )}

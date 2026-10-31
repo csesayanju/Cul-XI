@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { saveTeam } from "@/app/actions/team";
@@ -26,6 +27,8 @@ interface Props {
   opponentName: string;
   players: MatchPlayer[];
   initial: { playerIds: number[]; captainId: number | null; viceCaptainId: number | null };
+  /** The team locks at this moment (the database refuses changes after it too). */
+  kickoffAt: string;
 }
 
 type Sheet =
@@ -105,7 +108,43 @@ function statRows(p: MatchPlayer): [string, string][] {
   return rows;
 }
 
-export function TeamBuilder({ matchId, barcaTeamId, opponentName, players, initial }: Props) {
+/** "2d 4h", "3h 12m", "41:12" until kickoff. */
+function lockLabel(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** Live countdown to kickoff; flips to locked (and refreshes into the read-only view). */
+function useKickoffLock(kickoffAt: string) {
+  const kickoff = Date.parse(kickoffAt);
+  const [now, setNow] = useState(() => Date.now());
+  const router = useRouter();
+  const locked = now >= kickoff;
+  useEffect(() => {
+    if (locked) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [locked]);
+  useEffect(() => {
+    if (locked) router.refresh();
+  }, [locked, router]);
+  return { locked, left: kickoff - now };
+}
+
+export function TeamBuilder({
+  matchId,
+  barcaTeamId,
+  opponentName,
+  players,
+  initial,
+  kickoffAt,
+}: Props) {
+  const lock = useKickoffLock(kickoffAt);
   const byId = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
   const allowedTeamIds = useMemo(() => [...new Set(players.map((p) => p.teamId))], [players]);
 
@@ -347,14 +386,39 @@ export function TeamBuilder({ matchId, barcaTeamId, opponentName, players, initi
           {!notice && injuredPicked.length === 0 && !validation.valid && selectedIds.length > 0 && (
             <p className="text-xs text-ink-muted">{validation.errors[0]?.message}</p>
           )}
-          <Button className="w-full" onClick={save} disabled={!canSave || pending}>
-            {pending
-              ? "Saving…"
-              : canSave
-                ? "Save team"
-                : injuredPicked.length > 0
-                  ? "Replace injured players to save"
-                  : "Complete your XI to save"}
+          <p
+            className={cx(
+              "flex items-center justify-center gap-1.5 text-xs font-semibold",
+              lock.locked
+                ? "text-garnet-500"
+                : lock.left < 15 * 60 * 1000
+                  ? "text-gold-700 dark:text-gold-400"
+                  : "text-ink-muted",
+            )}
+            aria-live="polite"
+          >
+            <span aria-hidden>🔒</span>
+            {lock.locked ? (
+              "Kicked off — teams are locked"
+            ) : (
+              <>
+                Locks at kickoff in{" "}
+                <span className="tabular" suppressHydrationWarning>
+                  {lockLabel(lock.left)}
+                </span>
+              </>
+            )}
+          </p>
+          <Button className="w-full" onClick={save} disabled={!canSave || pending || lock.locked}>
+            {lock.locked
+              ? "Locked"
+              : pending
+                ? "Saving…"
+                : canSave
+                  ? "Save team"
+                  : injuredPicked.length > 0
+                    ? "Replace injured players to save"
+                    : "Complete your XI to save"}
           </Button>
         </div>
       </div>

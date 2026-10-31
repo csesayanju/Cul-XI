@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
-import { freshenMatch } from "@/features/fantasy/sync/on-demand";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { LocalTime } from "@/components/local-time";
 import { PlayerAvatar } from "@/components/player-avatar";
-import { Badge, Card, Notice, PageTitle } from "@/components/ui";
+import { Badge, Card, cx, Notice, PageTitle, SectionTitle } from "@/components/ui";
 import { Pitch, pitchName } from "@/features/fantasy/components/pitch";
 import { COMPETITION_LABELS, SCORE_LABELS } from "@/features/fantasy/labels";
 import { getMatch, getMyTeam, listMatchPlayers } from "@/features/fantasy/queries";
 import { POSITIONS, type Position } from "@/features/fantasy/types";
 import type { FantasyPointsBreakdown } from "@/features/fantasy/scoring/score-fantasy-team";
+import { freshenMatch } from "@/features/fantasy/sync/on-demand";
 import { requireUser } from "@/lib/auth";
 import { hasKickedOff } from "@/lib/time";
 import { serverEnv } from "@/lib/env/server";
@@ -19,8 +20,14 @@ import { TeamBuilder } from "./team-builder";
 
 export const metadata: Metadata = { title: "Pick your XI" };
 
-export default async function PickPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function PickPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ user?: string }>;
+}) {
+  const [{ id }, { user: viewParam }] = await Promise.all([params, searchParams]);
   const matchId = Number.parseInt(id, 10);
   if (!Number.isFinite(matchId)) notFound();
 
@@ -34,10 +41,8 @@ export default async function PickPage({ params }: { params: Promise<{ id: strin
     getMyTeam(supabase, user.id, matchId),
     supabase
       .from("fantasy_points")
-      .select("total_points, breakdown")
-      .eq("user_id", user.id)
-      .eq("match_id", matchId)
-      .maybeSingle(),
+      .select("user_id, total_points, breakdown")
+      .eq("match_id", matchId),
   ]);
   if (!match) notFound();
 
@@ -67,6 +72,7 @@ export default async function PickPage({ params }: { params: Promise<{ id: strin
           matchId={matchId}
           barcaTeamId={barcaTeamId}
           opponentName={match.opponent_name}
+          kickoffAt={match.kickoff_at}
           players={players}
           initial={{
             playerIds: team?.picks.map((p) => p.playerId) ?? [],
@@ -78,25 +84,116 @@ export default async function PickPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  // After kickoff: read-only team and (once calculated) points breakdown.
+  // After kickoff: teams are locked. Everyone's teams in your leagues become visible (RLS),
+  // so you can look at yours or any league-mate's, with points once calculated.
   const byId = new Map(players.map((p) => [p.id, p]));
-  const breakdown = points.data?.breakdown as FantasyPointsBreakdown | undefined;
+  const { data: teamRows } = await supabase
+    .from("fantasy_teams")
+    .select("user_id, profiles(display_name), fantasy_team_players(player_id, is_captain)")
+    .eq("match_id", matchId);
+  const pointsByUser = new Map(
+    (points.data ?? []).map((r) => [
+      r.user_id as string,
+      { total: Number(r.total_points), breakdown: r.breakdown as FantasyPointsBreakdown },
+    ]),
+  );
+  const teams = (
+    (teamRows ?? []) as unknown as {
+      user_id: string;
+      profiles: { display_name: string } | null;
+      fantasy_team_players: { player_id: number; is_captain: boolean }[];
+    }[]
+  )
+    .map((t) => ({
+      userId: t.user_id,
+      name: t.user_id === user.id ? "You" : (t.profiles?.display_name ?? "Player"),
+      points: pointsByUser.get(t.user_id)?.total ?? null,
+      captain: byId.get(Number(t.fantasy_team_players.find((x) => x.is_captain)?.player_id))?.name,
+    }))
+    .sort(
+      (a, b) =>
+        (b.points ?? -1) - (a.points ?? -1) ||
+        Number(b.userId === user.id) - Number(a.userId === user.id) ||
+        a.name.localeCompare(b.name),
+    );
+
+  const viewing = teams.find((t) => t.userId === viewParam) ?? null;
+  const viewId = viewing?.userId ?? user.id;
+  const mine = viewId === user.id;
+  const shown = mine ? team : await getMyTeam(supabase, viewId, matchId);
+  const shownPoints = pointsByUser.get(viewId);
+  const breakdown = shownPoints?.breakdown;
   const scoreById = new Map(breakdown?.players.map((p) => [p.playerId, p]) ?? []);
+
+  const leagueTeams = (
+    <section className="mt-8">
+      <SectionTitle aside={`${teams.length} ${teams.length === 1 ? "team" : "teams"}`}>
+        League teams
+      </SectionTitle>
+      {teams.length === 0 ? (
+        <Notice>Nobody in your leagues picked a team for this match.</Notice>
+      ) : (
+        <Card className="p-0">
+          <ul className="divide-y divide-line text-sm">
+            {teams.map((t, i) => (
+              <li key={t.userId}>
+                <Link
+                  href={`/matches/${matchId}/pick${t.userId === user.id ? "" : `?user=${t.userId}`}`}
+                  scroll={false}
+                  aria-current={t.userId === viewId ? "true" : undefined}
+                  className={cx(
+                    "flex items-center gap-3 p-3 transition-colors hover:bg-line/30",
+                    t.userId === viewId && "bg-gold-400/10",
+                  )}
+                >
+                  <span className="tabular w-5 text-center font-bold text-ink-muted">
+                    {t.points == null ? "–" : i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">{t.name}</span>
+                    {t.captain && (
+                      <span className="block truncate text-xs text-ink-muted">
+                        Captain: {t.captain}
+                      </span>
+                    )}
+                  </span>
+                  <span className="tabular font-black">{t.points ?? "—"}</span>
+                  <span aria-hidden className="text-ink-muted">
+                    ›
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+    </section>
+  );
 
   return (
     <>
       {header}
-      {!team ? (
-        <Notice>You didn&apos;t pick a team for this match.</Notice>
+      <div className="mb-3 flex items-center gap-2 rounded-xl border border-line bg-surface-raised px-3 py-2 text-sm">
+        <span aria-hidden>🔒</span>
+        <span className="text-ink-muted">
+          Teams locked at kickoff.{" "}
+          {pointsByUser.size === 0 ? "Points arrive after full time." : "Points are in."}
+        </span>
+      </div>
+      {!shown ? (
+        <Notice>
+          {mine
+            ? "You didn't pick a team for this match."
+            : `${viewing?.name ?? "They"} didn't pick a team.`}
+        </Notice>
       ) : (
         <div className="space-y-3">
           <Card className="flex items-center justify-between">
-            <span className="font-semibold">Your points</span>
-            <span className="text-2xl font-black">
-              {points.data ? Number(points.data.total_points) : "—"}
+            <span className="font-semibold">
+              {mine ? "Your points" : `${viewing?.name}'s points`}
             </span>
+            <span className="text-2xl font-black">{shownPoints ? shownPoints.total : "—"}</span>
           </Card>
-          {!points.data && <Notice>Teams are locked. Points arrive after full time.</Notice>}
           {breakdown && !breakdown.valid && (
             <Notice tone="error">
               This team broke the rules and scored 0:{" "}
@@ -108,7 +205,7 @@ export default async function PickPage({ params }: { params: Promise<{ id: strin
               Object.fromEntries(
                 POSITIONS.map((pos) => [
                   pos,
-                  team.picks
+                  shown.picks
                     .filter((pick) => byId.get(pick.playerId)?.position === pos)
                     .map((pick) => {
                       const p = byId.get(pick.playerId)!;
@@ -148,7 +245,7 @@ export default async function PickPage({ params }: { params: Promise<{ id: strin
             Breakdown
           </h2>
           <ul className="space-y-2">
-            {team.picks.map((pick) => {
+            {shown.picks.map((pick) => {
               const p = byId.get(pick.playerId);
               const score = scoreById.get(pick.playerId);
               return (
@@ -188,6 +285,7 @@ export default async function PickPage({ params }: { params: Promise<{ id: strin
           </ul>
         </div>
       )}
+      {leagueTeams}
     </>
   );
 }

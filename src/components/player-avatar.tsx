@@ -18,9 +18,38 @@ export function initialsOf(name: string) {
 
 /**
  * Player photo (served by the data provider) with an initials fallback when there's no
- * photo or it fails to load.
+ * photo or it fails to load. `starting` adds a green dot: in the confirmed starting XI.
  */
 export function PlayerAvatar({
+  starting,
+  ...props
+}: {
+  name: string;
+  photoUrl: string | null | undefined;
+  barca: boolean;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+  starting?: boolean;
+}) {
+  if (!starting) return <Avatar {...props} />;
+  const dot = { sm: "size-3", md: "size-3.5", lg: "size-4" }[props.size ?? "md"];
+  return (
+    <span className="relative inline-flex shrink-0">
+      <Avatar {...props} />
+      <span
+        role="img"
+        aria-label="In the starting XI"
+        title="In the starting XI"
+        className={cx(
+          "absolute -right-0.5 -bottom-0.5 rounded-full bg-emerald-500 ring-2 ring-surface-raised",
+          dot,
+        )}
+      />
+    </span>
+  );
+}
+
+function Avatar({
   name,
   photoUrl,
   barca,

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { after } from "next/server";
 import Link from "next/link";
 
 import { LocalDateTile, LocalTime } from "@/components/local-time";
 import { Badge, Card, Notice, PageTitle, SectionTitle } from "@/components/ui";
 import { COMPETITION_LABELS } from "@/features/fantasy/labels";
 import { listMatches, type MatchSummary } from "@/features/fantasy/queries";
+import { freshenRecent } from "@/features/fantasy/sync/on-demand";
 import { requireUser } from "@/lib/auth";
 import { hasKickedOff } from "@/lib/time";
 import { createClient } from "@/lib/supabase/server";
@@ -77,6 +79,8 @@ export default async function MatchesPage({
   searchParams: Promise<{ welcome?: string }>;
 }) {
   const [user, { welcome }] = await Promise.all([requireUser(), searchParams]);
+  // After the response: line-ups / stats for matches around now, if they're due.
+  after(freshenRecent);
   const supabase = await createClient();
   const [{ upcoming, recent }, teams] = await Promise.all([
     listMatches(supabase),

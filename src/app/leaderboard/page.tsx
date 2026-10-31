@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { after } from "next/server";
 import Link from "next/link";
 
 import { Card, cx, Notice, PageTitle } from "@/components/ui";
 import { buildStandings, type Standing } from "@/features/fantasy/leaderboard";
 import { getMyLeague } from "@/features/fantasy/queries";
+import { freshenRecent } from "@/features/fantasy/sync/on-demand";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -46,6 +48,8 @@ export default async function LeaderboardPage({
 }) {
   const user = await requireUser();
   const { match, league: leagueParam } = await searchParams;
+  // After the response: fetch stats and points for a just-finished match, if they're due.
+  after(freshenRecent);
   const supabase = await createClient();
 
   // One parallel round: RLS already limits points to you and your league-mates, and

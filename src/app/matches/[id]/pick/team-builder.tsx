@@ -238,6 +238,7 @@ export function TeamBuilder({ matchId, barcaTeamId, opponentName, players, initi
                 name={p.name}
                 photoUrl={p.photoUrl}
                 barca={p.teamId === barcaTeamId}
+                starting={p.lineupStatus === "starting"}
                 className={injured ? "opacity-60 ring-red-500" : undefined}
               />
               {injured && (
@@ -401,6 +402,7 @@ function PlayerSheet(props: {
             name={p.name}
             photoUrl={p.photoUrl}
             barca={p.teamId === barcaTeamId}
+            starting={p.lineupStatus === "starting"}
             size="lg"
           />
           <div>
@@ -470,10 +472,13 @@ function PlayerSheet(props: {
       .filter((p) => p.position === sheet.pos)
       .filter((p) => team === "all" || (team === "barca") === (p.teamId === barcaTeamId))
       .filter((p) => !q || p.name.toLowerCase().includes(q))
-      .sort((a, b) =>
-        sort === "price"
-          ? b.price - a.price || a.name.localeCompare(b.name)
-          : (b.form?.avgRating ?? 0) - (a.form?.avgRating ?? 0) || b.price - a.price,
+      .sort(
+        (a, b) =>
+          // Once line-ups are out, starters come first.
+          Number(b.lineupStatus === "starting") - Number(a.lineupStatus === "starting") ||
+          (sort === "price"
+            ? b.price - a.price || a.name.localeCompare(b.name)
+            : (b.form?.avgRating ?? 0) - (a.form?.avgRating ?? 0) || b.price - a.price),
       );
     body = (
       <div className="space-y-3">
@@ -534,6 +539,7 @@ function PlayerSheet(props: {
                     name={p.name}
                     photoUrl={p.photoUrl}
                     barca={p.teamId === barcaTeamId}
+                    starting={p.lineupStatus === "starting"}
                     size="sm"
                   />
                   <span className="min-w-0 flex-1">
@@ -541,9 +547,19 @@ function PlayerSheet(props: {
                     <span className="flex flex-wrap items-center gap-1 text-xs text-ink-muted">
                       {p.teamId === barcaTeamId ? "Barça" : p.teamName} · {formLine(p)}
                       {tag && (
-                        <Badge tone={p.lineupStatus === "starting" ? "gold" : "neutral"}>
+                        <span
+                          className={cx(
+                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold",
+                            p.lineupStatus === "starting"
+                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                              : "bg-line/70 text-ink",
+                          )}
+                        >
+                          {p.lineupStatus === "starting" && (
+                            <span aria-hidden className="size-1.5 rounded-full bg-emerald-500" />
+                          )}
                           {tag}
-                        </Badge>
+                        </span>
                       )}
                       {p.unavailable && (
                         <span className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white">

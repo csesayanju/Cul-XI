@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { freshenMatch } from "@/features/fantasy/sync/on-demand";
 import { notFound } from "next/navigation";
 
 import { LocalTime } from "@/components/local-time";
@@ -23,7 +24,8 @@ export default async function PickPage({ params }: { params: Promise<{ id: strin
   const matchId = Number.parseInt(id, 10);
   if (!Number.isFinite(matchId)) notFound();
 
-  const user = await requireUser();
+  // Around kickoff, fetch line-ups if they're out (GitHub's schedule can be late).
+  const [user] = await Promise.all([requireUser(), freshenMatch(matchId)]);
   const supabase = await createClient();
   // One parallel round of queries (the match isn't needed to start the others).
   const [match, players, team, points] = await Promise.all([

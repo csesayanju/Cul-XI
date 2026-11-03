@@ -45,7 +45,7 @@ function PlayerCard({
   return (
     <div
       className={cx(
-        "flex min-h-52 flex-1 animate-rise flex-col items-center justify-center gap-2 rounded-3xl p-4 text-center text-white shadow-xl",
+        "flex min-h-36 flex-1 animate-rise flex-col items-center justify-center gap-1 rounded-3xl p-3 text-center text-white shadow-xl sm:min-h-52 sm:gap-2 sm:p-4",
         tone === "a"
           ? "bg-gradient-to-br from-blaugrana-700 to-blaugrana-950 shadow-blaugrana-950/30"
           : "bg-gradient-to-br from-garnet-500 to-garnet-900 shadow-garnet-900/30",
@@ -115,7 +115,9 @@ export function HigherLower({ initial }: { initial: HolView }) {
           era={game.a.era}
           goals={
             <>
-              <p className="tabular text-5xl font-black">{game.a.goals}</p>
+              <p className="tabular font-display text-4xl font-extrabold sm:text-5xl">
+                {game.a.goals}
+              </p>
               <p className="text-xs font-semibold text-white/70">La Liga goals</p>
             </>
           }
@@ -134,7 +136,7 @@ export function HigherLower({ initial }: { initial: HolView }) {
           goals={
             reveal ? (
               <>
-                <p className="tabular text-5xl font-black">
+                <p className="tabular font-display text-4xl font-extrabold sm:text-5xl">
                   <CountUp to={reveal.bGoals} />
                 </p>
                 <p className="text-xs font-semibold text-white/70">La Liga goals</p>

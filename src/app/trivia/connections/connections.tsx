@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { connectionsGuess } from "@/app/actions/games";
+import { Confetti } from "@/components/confetti";
 import { Button, cx, Notice } from "@/components/ui";
 import type { ConnectionsView } from "@/features/connections/server";
 
@@ -135,6 +136,11 @@ export function Connections({ initial }: { initial: ConnectionsView }) {
         </div>
       )}
 
+      {game.finished && game.groups.every((g) => g.found) && (
+        <div className="relative h-0">
+          <Confetti />
+        </div>
+      )}
       {game.finished && (
         <p className="text-center text-sm text-ink-muted">
           A new puzzle arrives at midnight (India time).

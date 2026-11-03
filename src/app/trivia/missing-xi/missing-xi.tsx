@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { xiGuess } from "@/app/actions/games";
+import { Confetti } from "@/components/confetti";
 import { Flag } from "@/components/flag";
 import { cx, Notice } from "@/components/ui";
 import type { XiView } from "@/features/missing-xi/server";
@@ -44,7 +45,9 @@ export function MissingXi({ initial }: { initial: XiView }) {
         <p className="text-[11px] font-bold tracking-[0.16em] text-gold-400 uppercase">
           {game.competition} final · {game.year}
         </p>
-        <h2 className="mt-1 text-2xl leading-tight font-black">{game.team}&apos;s starting XI</h2>
+        <h2 className="mt-1 font-display text-2xl leading-tight font-extrabold">
+          {game.team}&apos;s starting XI
+        </h2>
         <div className="mt-3 flex items-center justify-between text-xs font-semibold text-white/70">
           <span className="tabular">
             <span className="text-lg font-black text-white">{game.found}</span>/{game.slots.length}{" "}
@@ -144,8 +147,9 @@ export function MissingXi({ initial }: { initial: XiView }) {
         </div>
       )}
       {game.finished && (
-        <section className="animate-rise rounded-3xl border border-line bg-surface-raised p-5 text-center">
-          <p className="tabular text-5xl font-black">
+        <section className="relative animate-rise overflow-hidden rounded-3xl border border-line bg-surface-raised p-5 text-center">
+          {game.found >= 8 && <Confetti />}
+          <p className="tabular font-display text-6xl font-extrabold">
             {game.found}
             <span className="text-2xl text-ink-muted">/{game.slots.length}</span>
           </p>

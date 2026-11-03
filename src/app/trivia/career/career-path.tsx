@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { careerGuess } from "@/app/actions/games";
+import { Confetti } from "@/components/confetti";
 import { Flag } from "@/components/flag";
 import { cx, Notice } from "@/components/ui";
 import type { CareerView } from "@/features/career/server";
@@ -83,7 +84,7 @@ export function CareerPath({ initial }: { initial: CareerView }) {
         <p className="relative text-[11px] font-bold tracking-[0.16em] text-gold-400 uppercase">
           Career Path
         </p>
-        <h2 className="relative mt-1 text-2xl leading-tight font-black">
+        <h2 className="relative mt-1 font-display text-2xl leading-tight font-extrabold">
           {game.answer ? (
             <span className="flex items-center gap-2">
               <Flag code={game.answer.countryCode} className="h-5 w-7" />
@@ -189,7 +190,8 @@ export function CareerPath({ initial }: { initial: CareerView }) {
       )}
 
       {game.finished && (
-        <section className="animate-rise rounded-3xl border border-line bg-surface-raised p-5 text-center">
+        <section className="relative animate-rise overflow-hidden rounded-3xl border border-line bg-surface-raised p-5 text-center">
+          {game.solved && <Confetti />}
           <p className="text-4xl">{game.solved ? "🎯" : "🫣"}</p>
           <p className="mt-1 font-bold">
             {game.solved

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { triviaGuess } from "@/app/actions/trivia";
+import { Confetti } from "@/components/confetti";
 import { Flag } from "@/components/flag";
 import { cx, Notice } from "@/components/ui";
 import { PlayerSearch } from "@/features/trivia/components/player-search";
@@ -73,7 +74,7 @@ export function CuleTen({ initial }: { initial: GameView }) {
         <p className="relative text-[11px] font-bold tracking-[0.16em] text-gold-400 uppercase">
           Culé Ten · {dayLabel(game.day)}
         </p>
-        <h2 className="relative mt-1 text-2xl leading-tight font-black text-balance">
+        <h2 className="relative mt-1 font-display text-2xl leading-tight font-extrabold text-balance">
           {game.title}
         </h2>
         {game.subtitle && (
@@ -213,8 +214,9 @@ export function CuleTen({ initial }: { initial: GameView }) {
         </div>
       )}
       {game.finished && (
-        <section className="animate-rise rounded-3xl border border-line bg-surface-raised p-5 text-center">
-          <p className="tabular text-5xl font-black">
+        <section className="relative animate-rise overflow-hidden rounded-3xl border border-line bg-surface-raised p-5 text-center">
+          {game.found >= 7 && <Confetti />}
+          <p className="tabular font-display text-6xl font-extrabold">
             {game.found}
             <span className="text-2xl text-ink-muted">/{LIST_SIZE}</span>
           </p>

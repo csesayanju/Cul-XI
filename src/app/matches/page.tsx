@@ -38,7 +38,7 @@ function MatchCard({ match, hasTeam }: { match: MatchSummary; hasTeam: boolean }
               {match.is_home ? "Home" : "Away"}
             </span>
           </div>
-          <p className="truncate font-bold">
+          <p className="truncate font-display text-lg font-extrabold tracking-tight">
             {home} <span className="font-medium text-ink-muted">vs</span> {away}
           </p>
           <p className="text-xs text-ink-muted">

@@ -36,10 +36,33 @@
   --color-brand-ink: var(--brand-ink);
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Chunky display face for headlines and big numbers (self-hosted by next/font). */
+  --font-display: var(--font-bricolage), var(--font-sans);
+
+  /* Neon accent for "live / new" moments. */
+  --color-volt: #c6ff3d;
 
   --animate-rise: rise 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-pop: pop 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-shake: shake 360ms ease-in-out both;
+  --animate-float: float 4s ease-in-out infinite;
+  --animate-confetti: confetti 1.4s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+
+  @keyframes float {
+    50% {
+      transform: translateY(-6px) rotate(var(--tilt, 0deg));
+    }
+  }
+  @keyframes confetti {
+    0% {
+      opacity: 1;
+      transform: translate(0, 0) rotate(0deg) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.6);
+    }
+  }
 
   @keyframes rise {
     from {
@@ -99,10 +122,10 @@
 }
 
 body {
-  /* A soft Blaugrana glow at the top of every page. */
+  /* Soft Blaugrana and garnet glows at the top of every page. */
   background:
-    radial-gradient(60rem 22rem at 50% -8rem, rgb(31 79 163 / 0.14), transparent 70%),
-    var(--surface);
+    radial-gradient(40rem 20rem at 15% -6rem, rgb(31 79 163 / 0.2), transparent 70%),
+    radial-gradient(36rem 18rem at 95% -4rem, rgb(165 0 68 / 0.14), transparent 70%), var(--surface);
   background-attachment: fixed;
   color: var(--ink);
   -webkit-tap-highlight-color: transparent;
@@ -115,6 +138,31 @@ body {
 
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* Gen Z chrome: frosted glass, a soft brand glow, gradient borders (see the ui-expert skill). */
+.glass {
+  background: color-mix(in oklab, var(--surface-raised) 72%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+}
+.glow {
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.06) inset,
+    0 18px 50px -18px rgb(165 0 68 / 0.55),
+    0 10px 30px -12px rgb(31 79 163 / 0.55);
+}
+.gradient-border {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--surface-raised), var(--surface-raised)) padding-box,
+    linear-gradient(135deg, #1f4fa3, #a50044 55%, #f6c94c) border-box;
+}
+.text-gradient {
+  background: linear-gradient(100deg, #7f9fd6, #d97a90 45%, #f6c94c);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

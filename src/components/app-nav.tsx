@@ -102,9 +102,9 @@ export function BottomNav({ items }: { items: NavItem[] }) {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface-raised/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg md:hidden"
+      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 md:hidden"
     >
-      <ul className="mx-auto flex max-w-md">
+      <ul className="glass mx-auto flex max-w-md items-center gap-1 rounded-full border border-white/10 p-1.5 shadow-[0_12px_40px_-12px_rgb(6_15_36/0.6)]">
         {items.map((item) => {
           const active = isActive(item.href);
           return (
@@ -114,18 +114,13 @@ export function BottomNav({ items }: { items: NavItem[] }) {
                 prefetch={item.href !== "/admin"}
                 aria-current={active ? "page" : undefined}
                 className={cx(
-                  "flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors active:scale-95",
-                  active ? "text-accent" : "text-ink-muted",
+                  "flex h-12 flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-extrabold transition duration-200 active:scale-90",
+                  active
+                    ? "bg-gradient-to-br from-blaugrana-500 to-garnet-500 text-white shadow-[0_6px_18px_-6px_rgb(165_0_68/0.7)]"
+                    : "text-ink-muted hover:text-ink",
                 )}
               >
-                <span
-                  className={cx(
-                    "flex h-7 w-12 items-center justify-center rounded-full transition-colors",
-                    active && "bg-accent/12",
-                  )}
-                >
-                  <Icon name={item.icon} className="size-5" />
-                </span>
+                <Icon name={item.icon} className="size-5" />
                 {item.label}
               </Link>
             </li>

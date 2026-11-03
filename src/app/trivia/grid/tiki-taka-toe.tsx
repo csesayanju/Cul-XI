@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 
 import { tttGuess } from "@/app/actions/tiki-taka-toe";
+import { Confetti } from "@/components/confetti";
 import { Flag } from "@/components/flag";
 import { cx, Notice } from "@/components/ui";
 import type { Category } from "@/features/tiki-taka-toe/grid";
@@ -293,8 +294,9 @@ export function TikiTakaToe({ initial }: { initial: TttView }) {
       </div>
 
       {game.finished && (
-        <section className="animate-rise rounded-3xl border border-line bg-surface-raised p-5 text-center">
-          <p className="tabular text-5xl font-black">
+        <section className="relative animate-rise overflow-hidden rounded-3xl border border-line bg-surface-raised p-5 text-center">
+          {game.filled >= 6 && <Confetti />}
+          <p className="tabular font-display text-6xl font-extrabold">
             {game.filled}
             <span className="text-2xl text-ink-muted">/9</span>
           </p>

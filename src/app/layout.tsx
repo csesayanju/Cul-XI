@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Bricolage_Grotesque } from "next/font/google";
 import Link from "next/link";
 
 import { signOut } from "@/app/actions/auth";
@@ -8,6 +9,14 @@ import { Wordmark } from "@/components/wordmark";
 import { getSessionUser } from "@/lib/auth";
 
 import "./globals.css";
+
+/** Display face for headlines and big numbers; body text stays on the fast system font. */
+const display = Bricolage_Grotesque({
+  subsets: ["latin", "latin-ext"],
+  weight: ["600", "800"],
+  variable: "--font-bricolage",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: { default: "Culé XI", template: "%s · Culé XI" },
@@ -40,12 +49,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   ];
 
   return (
-    <html lang="en">
+    <html lang="en" className={display.variable}>
       <body className="min-h-dvh font-sans antialiased">
-        <header className="sticky top-0 z-20 bg-brand/95 text-brand-ink shadow-lg shadow-blaugrana-950/20 backdrop-blur-lg">
+        <header className="sticky top-0 z-20 border-b border-white/10 bg-blaugrana-900/80 text-white shadow-lg shadow-blaugrana-950/20 backdrop-blur-xl backdrop-saturate-150">
           <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
             <Link href="/" aria-label="Culé XI home" className="transition active:scale-95">
-              <Wordmark className="text-xl" />
+              <Wordmark className="font-display text-2xl" />
             </Link>
             {user && (
               <div className="flex items-center gap-2">
@@ -79,7 +88,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main
           className={
             user
-              ? "mx-auto max-w-5xl px-4 pt-6 pb-28 md:pb-10"
+              ? "mx-auto max-w-5xl px-4 pt-6 pb-32 md:pb-10"
               : "mx-auto max-w-5xl px-4 pt-6 pb-10"
           }
         >
@@ -90,7 +99,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <footer
           className={
             user
-              ? "mx-auto max-w-5xl px-4 pb-24 text-center text-xs text-ink-muted md:pb-8"
+              ? "mx-auto max-w-5xl px-4 pb-28 text-center text-xs text-ink-muted md:pb-8"
               : "mx-auto max-w-5xl px-4 pb-8 text-center text-xs text-ink-muted"
           }
         >

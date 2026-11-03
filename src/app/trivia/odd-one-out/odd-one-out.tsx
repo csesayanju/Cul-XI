@@ -61,7 +61,7 @@ export function OddOneOut({ initial }: { initial: OooView }) {
         </p>
         <h2
           key={game.prompt}
-          className="mt-1 animate-rise text-2xl leading-tight font-black text-balance"
+          className="mt-1 animate-rise font-display text-2xl leading-tight font-extrabold text-balance"
         >
           {game.prompt}
         </h2>

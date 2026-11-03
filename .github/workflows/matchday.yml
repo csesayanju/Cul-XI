@@ -1,0 +1,55 @@
+name: Matchday watcher
+
+# Stays running around a match and calls the app's protected /api/sync/matchday every 5 min:
+# squads ~3 h before kickoff, line-ups from 1 h before, live points during the match and the
+# final stats after full time. GitHub's scheduled runs can be hours late, so this doesn't
+# rely on them: start it by hand (Run workflow) or let the hourly check pick a match up.
+# A job may run for 6 h at most, so it restarts itself while a match still needs watching.
+# Needs the same APP_URL variable and CRON_SECRET secret as "Sync match data".
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "10 * * * *" # hourly: starts watching when a match is within 6 h
+
+permissions:
+  contents: read
+  actions: write # to restart itself
+
+concurrency:
+  group: matchday
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      APP_URL: ${{ vars.APP_URL }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Watch
+        id: watch
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::notice::APP_URL variable or CRON_SECRET secret not set — skipping."
+            exit 0
+          fi
+          end=$(( $(date +%s) + 340 * 60 ))
+          while [ "$(date +%s)" -lt "$end" ]; do
+            body=$(curl -sS --max-time 60 -X POST -H "Authorization: Bearer $CRON_SECRET" \
+              "$APP_URL/api/sync/matchday" || echo '{"ok":false,"message":"request failed"}')
+            echo "$(date -u +%H:%M) $body"
+            if echo "$body" | grep -q '"active":false'; then
+              echo "Nothing to watch."
+              echo "restart=no" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 300
+          done
+          echo "restart=yes" >> "$GITHUB_OUTPUT"
+
+      - name: Keep watching
+        if: steps.watch.outputs.restart == 'yes'
+        run: gh workflow run matchday.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"

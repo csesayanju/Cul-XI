@@ -2,6 +2,7 @@ import "server-only";
 
 import { createSyncContext, HOUR, type SyncContext } from "./context";
 import { syncLineups } from "./sync-lineups";
+import { syncSquads } from "./sync-squads";
 import { syncStats } from "./sync-stats";
 
 /**
@@ -88,4 +89,45 @@ export async function freshenRecent() {
   } catch (err) {
     console.error("[freshen]", err instanceof Error ? err.message : err);
   }
+}
+
+/**
+ * One matchday tick (called every few minutes by the matchday watcher workflow): refreshes
+ * the squads ~3 h before kickoff (late injuries / call-ups) if they're older than that, then
+ * line-ups, live points and final stats as they fall due. Returns whether a match still needs
+ * watching (kicks off within 6 h, or hasn't got its final stats yet), so the watcher knows
+ * when to stop.
+ */
+export async function matchdayTick(): Promise<{ active: boolean; message: string }> {
+  const ctx = createSyncContext();
+  const now = ctx.now.getTime();
+  const { data } = await ctx.db
+    .from("matches")
+    .select(
+      "id, opponent_name, kickoff_at, status, lineups_synced_at, stats_synced_at, squads_synced_at",
+    )
+    .is("stats_synced_at", null)
+    .gte("kickoff_at", new Date(now - 48 * HOUR).toISOString())
+    .lte("kickoff_at", new Date(now + 6 * HOUR).toISOString())
+    .not("status", "in", "(PST,CANC,ABD)")
+    .order("kickoff_at");
+  const matches = (data ?? []) as (MatchTimes & {
+    opponent_name: string;
+    squads_synced_at: string | null;
+  })[];
+  const notes: string[] = [];
+  for (const m of matches) {
+    const ko = Date.parse(m.kickoff_at);
+    const squadsAt = m.squads_synced_at ? Date.parse(m.squads_synced_at) : 0;
+    if (now >= ko - 3 * HOUR && now < ko && squadsAt < ko - 3 * HOUR) {
+      const r = await syncSquads(ctx, { matchId: m.id });
+      notes.push(`squads: ${r.message}`);
+    }
+    const need = freshenNeed(m, now);
+    if (need) await freshenMatch(m.id);
+    notes.push(`${m.opponent_name}: ${need ?? "waiting"}`);
+  }
+  // Still worth watching while a match is within 6 h of kickoff or awaits final stats.
+  const active = matches.some((m) => Date.parse(m.kickoff_at) + 48 * HOUR > now);
+  return { active, message: notes.join(" · ") || "No match within 6 hours." };
 }

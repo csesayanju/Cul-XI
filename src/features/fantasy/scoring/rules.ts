@@ -54,6 +54,8 @@ export const SCORING_RULES: Readonly<ScoringRules> = {
 export const TEAM_RULES = {
   squadSize: 11,
   budget: 100,
+  /** Golden rule: the most expensive legal XI in any match costs at most this. */
+  maxTeamCost: 103,
   maxPerTeam: 7,
   formation: {
     GK: { min: 1, max: 1 },

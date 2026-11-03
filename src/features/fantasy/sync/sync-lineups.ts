@@ -11,6 +11,7 @@ import {
   type SyncResult,
 } from "./context";
 import { upsertPlayers } from "./players";
+import { applyPriceCap } from "./price-cap";
 
 /**
  * Fetches confirmed line-ups for matches kicking off within `windowHours` (default 1.5h).
@@ -74,5 +75,6 @@ export async function syncLineups(
     );
   }
 
-  return { ok: true, message: `Line-ups: ${results.join("; ")}.` };
+  const cap = await applyPriceCap(db, now);
+  return { ok: true, message: `Line-ups: ${results.join("; ")}. ${cap}` };
 }

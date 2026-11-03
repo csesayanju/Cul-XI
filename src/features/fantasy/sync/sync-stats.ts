@@ -12,6 +12,7 @@ import {
   type SyncResult,
 } from "./context";
 import { upsertPlayers } from "./players";
+import { applyPriceCap } from "./price-cap";
 import { recalculatePoints } from "./recalculate-points";
 
 /** Match states during which live points are updated. */
@@ -171,5 +172,7 @@ export async function syncStats(
     );
   }
 
+  // New box scores re-price players (upsertPlayers), so re-apply the cap.
+  results.push(await applyPriceCap(db, now));
   return { ok: true, message: results.join(" ") };
 }

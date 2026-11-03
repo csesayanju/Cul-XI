@@ -18,6 +18,7 @@ import {
 } from "../pricing";
 import type { Position } from "../types";
 import { check, DAY, HOUR, type SyncContext, type SyncResult } from "./context";
+import { applyPriceCap } from "./price-cap";
 
 /** Max Highlightly requests per run. */
 const MAX_REQUESTS = 20;
@@ -242,10 +243,12 @@ export async function syncProfiles(
   }
 
   const left = tasks.length - done;
+  const cap = await applyPriceCap(db, now);
   return {
     ok: true,
     message:
       `Players: ${done} updates (${requests} requests), ${injuriesFound} current injuries, ${repriced} re-priced` +
-      (stoppedFor ? `; paused (${stoppedFor}), ${left} updates left for later runs.` : "."),
+      (stoppedFor ? `; paused (${stoppedFor}), ${left} updates left for later runs.` : ".") +
+      ` ${cap}`,
   };
 }

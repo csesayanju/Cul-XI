@@ -11,6 +11,7 @@ import {
   type SeasonStats,
 } from "@/features/fantasy/pricing";
 import { createSyncContext, type SyncResult } from "@/features/fantasy/sync/context";
+import { applyPriceCap } from "@/features/fantasy/sync/price-cap";
 import { recalculatePoints } from "@/features/fantasy/sync/recalculate-points";
 import { syncFixtures } from "@/features/fantasy/sync/sync-fixtures";
 import { syncPhotos } from "@/features/fantasy/sync/sync-photos";
@@ -200,6 +201,7 @@ export async function saveManualStats(
       }
       const { error } = await supabase.from("players").update(update).eq("id", playerId);
       if (error) return { ok: false, message: `Price not saved: ${error.message}` };
+      await applyPriceCap(createSyncContext().db);
       revalidatePath("/", "layout");
       return {
         ok: true,

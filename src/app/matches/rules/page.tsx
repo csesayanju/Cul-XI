@@ -216,8 +216,10 @@ export default function RulesPage() {
           </ul>
           <p className="text-xs text-ink-muted">
             A mix of Barça starters and opponent regulars fits the budget; a team full of stars
-            doesn&apos;t. Once you save a team, it keeps the prices you paid even if they change
-            later.
+            doesn&apos;t. Golden rule: the most expensive XI you could build for a match never costs
+            more than <b>{TEAM_RULES.maxTeamCost} credits</b>. If it would, every price in that
+            match drops by the same amount, so the gaps between players stay the same. Once you save
+            a team, it keeps the prices you paid even if they change later.
           </p>
         </Card>
       </section>

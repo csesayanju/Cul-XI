@@ -20,6 +20,7 @@ import {
   type SyncResult,
 } from "./context";
 import { upsertPlayers } from "./players";
+import { applyPriceCap } from "./price-cap";
 
 /** How many recent matches make up a team's player pool and form (and so its prices). */
 const RECENT_MATCHES = 5;
@@ -114,5 +115,6 @@ export async function syncSquads(
     );
   }
 
-  return { ok: true, message: `Squads & prices: ${synced.join("; ")}.` };
+  const cap = await applyPriceCap(db, now);
+  return { ok: true, message: `Squads & prices: ${synced.join("; ")}. ${cap}` };
 }

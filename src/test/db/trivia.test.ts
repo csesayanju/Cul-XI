@@ -252,3 +252,33 @@ describe("Mystery Player security", () => {
     ).rejects.toThrow(/permission denied/);
   });
 });
+
+describe("Archive plays and endless-game boards", () => {
+  it("marks attempts on past days as practice (not live) and today's as live", async () => {
+    await db.exec(`
+      insert into public.ttt_daily (day, grid) values ('2020-01-01', '{"answers": []}')
+        on conflict do nothing;
+      insert into public.ttt_daily (day, grid)
+        values ((now() at time zone 'Asia/Kolkata')::date, '{"answers": []}') on conflict do nothing;
+      insert into public.ttt_attempts (user_id, day) values ('${ADMIN}', '2020-01-01');
+      insert into public.ttt_attempts (user_id, day)
+        values ('${ADMIN}', (now() at time zone 'Asia/Kolkata')::date);
+    `);
+    const r = await db.query<{ day: string; live: boolean }>(
+      `select day::text, live from public.ttt_attempts where user_id = $1 order by day`,
+      [ADMIN],
+    );
+    expect(r.rows.find((x) => x.day === "2020-01-01")?.live).toBe(false);
+    expect(r.rows.at(-1)?.live).toBe(true);
+  });
+
+  it("keeps endless-game daily bests server-written and readable by league-mates", async () => {
+    await db.exec(
+      `insert into public.hol_scores (user_id, day, best) values ('${BRUNO}', '2026-11-03', 7);`,
+    );
+    expect(await count("select * from public.hol_scores", ADMIN)).toBe(1);
+    await expect(
+      asUser(db, BRUNO, (tx) => tx.query(`update public.hol_scores set best = 99`)),
+    ).rejects.toThrow(/permission denied/);
+  });
+});

@@ -6,6 +6,7 @@ import { careerGuess } from "@/app/actions/games";
 import { Confetti } from "@/components/confetti";
 import { Flag } from "@/components/flag";
 import { cx, Notice } from "@/components/ui";
+import { GiveUp } from "@/app/trivia/give-up";
 import type { CareerView } from "@/features/career/server";
 import { PlayerSearch } from "@/features/trivia/components/player-search";
 
@@ -35,7 +36,14 @@ function Monogram({ name }: { name: string }) {
 }
 
 /** The daily Career Path: a club timeline, 5 guesses, a new hint after each miss. */
-export function CareerPath({ initial }: { initial: CareerView }) {
+export function CareerPath({
+  initial,
+  archiveDay,
+}: {
+  initial: CareerView;
+  /** Set when playing a past day from the archive (practice). */
+  archiveDay?: string;
+}) {
   const [game, setGame] = useState(initial);
   const [message, setMessage] = useState<{
     text: string;
@@ -46,7 +54,7 @@ export function CareerPath({ initial }: { initial: CareerView }) {
 
   function guess(playerId: number) {
     start(async () => {
-      const res = await careerGuess(playerId);
+      const res = await careerGuess(playerId, archiveDay);
       if (!res.ok) {
         setMessage({ text: res.message, tone: "error", key: Date.now() });
         return;
@@ -203,6 +211,7 @@ export function CareerPath({ initial }: { initial: CareerView }) {
           </p>
         </section>
       )}
+      {!game.finished && <GiveUp game="career" archiveDay={archiveDay} />}
     </div>
   );
 }

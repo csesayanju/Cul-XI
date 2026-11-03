@@ -6,6 +6,7 @@ import { tttGuess } from "@/app/actions/tiki-taka-toe";
 import { Confetti } from "@/components/confetti";
 import { Flag } from "@/components/flag";
 import { cx, Notice } from "@/components/ui";
+import { GiveUp } from "@/app/trivia/give-up";
 import type { Category } from "@/features/tiki-taka-toe/grid";
 import { GUESSES } from "@/features/tiki-taka-toe/grid";
 import type { TttView } from "@/features/tiki-taka-toe/server";
@@ -136,7 +137,14 @@ const describe = (c: Category) =>
           : `a ${c.label.toLowerCase()}`;
 
 /** The daily Tiki-Taka-Toe grid: tap a square, name a player who fits its row and column. */
-export function TikiTakaToe({ initial }: { initial: TttView }) {
+export function TikiTakaToe({
+  initial,
+  archiveDay,
+}: {
+  initial: TttView;
+  /** Set when playing a past day from the archive (practice). */
+  archiveDay?: string;
+}) {
   const [game, setGame] = useState(initial);
   const [open, setOpen] = useState<number | null>(null);
   const [message, setMessage] = useState<{
@@ -156,7 +164,7 @@ export function TikiTakaToe({ initial }: { initial: TttView }) {
 
   function guess(cell: number, playerId: number) {
     start(async () => {
-      const res = await tttGuess(cell, playerId);
+      const res = await tttGuess(cell, playerId, archiveDay);
       if (!res.ok) {
         setMessage({ text: res.message, tone: "error", key: Date.now() });
         return;
@@ -346,6 +354,7 @@ export function TikiTakaToe({ initial }: { initial: TttView }) {
           </div>
         </div>
       )}
+      {!game.finished && <GiveUp game="grid" archiveDay={archiveDay} />}
     </div>
   );
 }

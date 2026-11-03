@@ -1,34 +1,36 @@
 import type { Metadata } from "next";
 import { preconnect } from "react-dom";
 
-import { Card, cx, Notice, PageTitle, SectionTitle } from "@/components/ui";
-import { getMyLeague } from "@/features/fantasy/queries";
-import { getXi, xiTable } from "@/features/missing-xi/server";
-import { triviaDay } from "@/features/trivia/game";
+import { Notice, PageTitle } from "@/components/ui";
+import { archiveStatus } from "@/features/boards/server";
+import { getXi } from "@/features/missing-xi/server";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
+import { ArchiveBar } from "../archive-bar";
 import { GAME_PAGE } from "../layout-classes";
+import { triviaParams, type TriviaSearchParams } from "../params";
 import { TriviaTabs } from "../tabs";
+import { TriviaBoard } from "../trivia-board";
 import { MissingXi } from "./missing-xi";
 
 export const metadata: Metadata = { title: "Missing XI" };
 
-export default async function MissingXiPage() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<TriviaSearchParams>;
+}) {
   preconnect("https://flagcdn.com");
-  const user = await requireUser();
-  const day = triviaDay();
-  const supabase = await createClient();
-  const [game, table, league] = await Promise.all([
-    getXi(createAdminClient(), user.id, day),
-    xiTable(supabase, day),
-    getMyLeague(supabase, user.id),
+  const [user, sp] = await Promise.all([requireUser(), searchParams]);
+  const { today, day, practice, period, league } = triviaParams(sp);
+  const admin = createAdminClient();
+
+  // The game (answers) is resolved with the service role; archive days are generated on demand.
+  const [game, archive] = await Promise.all([
+    getXi(admin, user.id, day),
+    archiveStatus(admin, "missing-xi", user.id, today),
   ]);
-  const names = league?.members ?? new Map<string, string>();
-  const rows = table
-    .filter((r) => r.user_id === user.id || names.has(r.user_id))
-    .sort((a, b) => b.found - a.found || b.lives_left - a.lives_left);
 
   return (
     <div className={GAME_PAGE}>
@@ -39,35 +41,27 @@ export default async function MissingXiPage() {
         Missing XI
       </PageTitle>
       <TriviaTabs active="/trivia/missing-xi" />
-      {game ? <MissingXi initial={game} /> : <Notice>No line-up today yet.</Notice>}
-
-      <section className="mt-8">
-        <SectionTitle>Today&apos;s table</SectionTitle>
-        <Card className="p-0">
-          {rows.length === 0 ? (
-            <p className="p-3 text-sm text-ink-muted">Nobody has played today yet.</p>
-          ) : (
-            <ul className="divide-y divide-line text-sm">
-              {rows.map((r) => (
-                <li
-                  key={r.user_id}
-                  className={cx(
-                    "flex justify-between p-3",
-                    r.user_id === user.id && "bg-gold-400/10",
-                  )}
-                >
-                  <span className="font-medium">
-                    {r.user_id === user.id ? "You" : names.get(r.user_id)}
-                  </span>
-                  <span className="tabular font-bold">
-                    {r.found}/11 {r.finished ? "" : "· playing"}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </section>
+      <div>
+        <ArchiveBar path="/trivia/missing-xi" day={day} today={today} days={archive} />
+        {game ? (
+          <MissingXi
+            key={`${day}:${game.finished}`}
+            initial={game}
+            archiveDay={practice ? day : undefined}
+          />
+        ) : (
+          <Notice>No line-up for this day yet.</Notice>
+        )}
+      </div>
+      <TriviaBoard
+        game="missing-xi"
+        userId={user.id}
+        today={today}
+        period={period}
+        leagueId={league}
+        path="/trivia/missing-xi"
+        day={practice ? day : undefined}
+      />
     </div>
   );
 }

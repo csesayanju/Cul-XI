@@ -11,6 +11,8 @@ import { requireUser } from "@/lib/auth";
 import { hasKickedOff } from "@/lib/time";
 import { createClient } from "@/lib/supabase/server";
 
+import { FantasyTabs } from "./fantasy-tabs";
+
 export const metadata: Metadata = { title: "Fantasy" };
 
 function MatchCard({ match, hasTeam }: { match: MatchSummary; hasTeam: boolean }) {
@@ -96,6 +98,7 @@ export default async function MatchesPage({
       >
         Fantasy
       </PageTitle>
+      <FantasyTabs active="/matches" />
       {welcome && (
         <div className="mb-5">
           <Notice tone="success">

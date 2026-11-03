@@ -20,7 +20,7 @@ enabled = true
 port = 54323
 
 # Local email testing UI — magic links land here instead of a real inbox.
-[inbucket]
+[local_smtp]
 enabled = true
 port = 54324
 

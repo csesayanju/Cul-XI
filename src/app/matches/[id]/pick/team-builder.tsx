@@ -347,7 +347,7 @@ export function TeamBuilder({
 
       <p className="text-center text-xs text-ink-muted">
         Tap <b>+</b> to add a player, tap a player for captain / vice-captain / remove.{" "}
-        <Link href="/rules" className="underline">
+        <Link href="/matches/rules" className="underline">
           How points work
         </Link>
       </p>

@@ -6,6 +6,7 @@ import { xiGuess } from "@/app/actions/games";
 import { Confetti } from "@/components/confetti";
 import { Flag } from "@/components/flag";
 import { cx, Notice } from "@/components/ui";
+import { GiveUp } from "@/app/trivia/give-up";
 import type { XiView } from "@/features/missing-xi/server";
 import { PlayerSearch } from "@/features/trivia/components/player-search";
 
@@ -15,7 +16,14 @@ const surname = (name: string) => {
 };
 
 /** Missing XI: a famous final's starting line-up on a pitch; name all eleven. */
-export function MissingXi({ initial }: { initial: XiView }) {
+export function MissingXi({
+  initial,
+  archiveDay,
+}: {
+  initial: XiView;
+  /** Set when playing a past day from the archive (practice). */
+  archiveDay?: string;
+}) {
   const [game, setGame] = useState(initial);
   const [message, setMessage] = useState<{
     text: string;
@@ -27,7 +35,7 @@ export function MissingXi({ initial }: { initial: XiView }) {
 
   function guess(playerId: number) {
     start(async () => {
-      const res = await xiGuess(playerId);
+      const res = await xiGuess(playerId, archiveDay);
       if (!res.ok) {
         setMessage({ text: res.message, tone: "error", key: Date.now() });
         return;
@@ -165,6 +173,7 @@ export function MissingXi({ initial }: { initial: XiView }) {
           </p>
         </section>
       )}
+      {!game.finished && <GiveUp game="missing-xi" archiveDay={archiveDay} />}
     </div>
   );
 }

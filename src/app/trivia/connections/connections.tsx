@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { connectionsGuess } from "@/app/actions/games";
 import { Confetti } from "@/components/confetti";
 import { Button, cx, Notice } from "@/components/ui";
+import { GiveUp } from "@/app/trivia/give-up";
 import type { ConnectionsView } from "@/features/connections/server";
 
 /** Group colours, easiest look first (by the order groups are revealed). */
@@ -19,7 +20,14 @@ const GROUP_TONES = [
  * Connections: 16 players, 4 hidden groups; tap four and submit. No flags on the tiles —
  * nationality is one of the groups.
  */
-export function Connections({ initial }: { initial: ConnectionsView }) {
+export function Connections({
+  initial,
+  archiveDay,
+}: {
+  initial: ConnectionsView;
+  /** Set when playing a past day from the archive (practice). */
+  archiveDay?: string;
+}) {
   const [game, setGame] = useState(initial);
   const [picked, setPicked] = useState<number[]>([]);
   const [message, setMessage] = useState<{
@@ -27,23 +35,36 @@ export function Connections({ initial }: { initial: ConnectionsView }) {
     tone: "success" | "error" | "info";
     key: number;
   } | null>(null);
-  const [shake, setShake] = useState(0);
+  /** The four tiles of the last wrong guess: they shake and flash, then clear. */
+  const [missed, setMissed] = useState<number[]>([]);
+  /** Wrong combinations already tried (the same four can't be submitted twice). */
+  const [tried, setTried] = useState<string[]>([]);
   const [pending, start] = useTransition();
 
-  const toggle = (id: number) =>
+  const comboKey = (ids: number[]) => [...ids].sort((a, b) => a - b).join(",");
+  const toggle = (id: number) => {
+    setMissed([]);
     setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length < 4 ? [...p, id] : p));
+  };
 
   function submit() {
     const pick = picked;
+    if (tried.includes(comboKey(pick))) {
+      setMessage({ text: "You've already tried those four.", tone: "info", key: Date.now() });
+      return;
+    }
     start(async () => {
-      const res = await connectionsGuess(pick);
+      const res = await connectionsGuess(pick, archiveDay);
       if (!res.ok) {
         setMessage({ text: res.message, tone: "error", key: Date.now() });
         return;
       }
-      if (res.tone === "error") setShake(Date.now());
-      else setPicked([]);
-      if (res.game.finished) setPicked([]);
+      if (res.tone === "error") {
+        // Wrong: only the picked tiles shake; the board itself stays as it is.
+        setMissed(pick);
+        setTried((t) => [...t, comboKey(pick)]);
+      }
+      setPicked([]);
       setGame(res.game);
       setMessage({ text: res.message, tone: res.tone, key: Date.now() });
     });
@@ -86,13 +107,17 @@ export function Connections({ initial }: { initial: ConnectionsView }) {
         ))}
       </div>
 
+      {message && (
+        <div key={message.key} aria-live="polite">
+          <Notice tone={message.tone}>{message.text}</Notice>
+        </div>
+      )}
+
       {game.tiles.length > 0 && (
-        <div
-          key={shake}
-          className={cx("grid grid-cols-2 gap-2 sm:grid-cols-4", shake > 0 && "animate-shake")}
-        >
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {game.tiles.map((t) => {
             const on = picked.includes(t.id);
+            const miss = missed.includes(t.id);
             return (
               <button
                 key={t.id}
@@ -104,19 +129,15 @@ export function Connections({ initial }: { initial: ConnectionsView }) {
                   "flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl border p-2 text-center text-sm leading-tight font-bold transition duration-150 active:scale-95",
                   on
                     ? "border-transparent bg-brand text-brand-ink shadow-md shadow-brand/25"
-                    : "border-line bg-surface-raised hover:border-accent/50",
+                    : miss
+                      ? "animate-shake border-garnet-500 bg-garnet-500/15"
+                      : "border-line bg-surface-raised hover:border-accent/50",
                 )}
               >
                 <span className="line-clamp-2">{t.name}</span>
               </button>
             );
           })}
-        </div>
-      )}
-
-      {message && (
-        <div key={message.key} aria-live="polite">
-          <Notice tone={message.tone}>{message.text}</Notice>
         </div>
       )}
 
@@ -146,6 +167,7 @@ export function Connections({ initial }: { initial: ConnectionsView }) {
           A new puzzle arrives at midnight (India time).
         </p>
       )}
+      {!game.finished && <GiveUp game="connections" archiveDay={archiveDay} />}
     </div>
   );
 }

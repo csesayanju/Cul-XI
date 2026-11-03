@@ -6,6 +6,7 @@ import { triviaGuess } from "@/app/actions/trivia";
 import { Confetti } from "@/components/confetti";
 import { Flag } from "@/components/flag";
 import { cx, Notice } from "@/components/ui";
+import { GiveUp } from "@/app/trivia/give-up";
 import { PlayerSearch } from "@/features/trivia/components/player-search";
 import { LIST_SIZE, LIVES } from "@/features/trivia/game";
 import type { GameView } from "@/features/trivia/server";
@@ -36,7 +37,14 @@ function Heart({ full }: { full: boolean }) {
 }
 
 /** The daily Culé Ten board: 10 ranked slots with nationality hints, lives and a guess box. */
-export function CuleTen({ initial }: { initial: GameView }) {
+export function CuleTen({
+  initial,
+  archiveDay,
+}: {
+  initial: GameView;
+  /** Set when playing a past day from the archive (practice). */
+  archiveDay?: string;
+}) {
   const [game, setGame] = useState(initial);
   const [message, setMessage] = useState<{
     text: string;
@@ -48,7 +56,7 @@ export function CuleTen({ initial }: { initial: GameView }) {
 
   function guess(playerId: number) {
     startTransition(async () => {
-      const res = await triviaGuess(playerId);
+      const res = await triviaGuess(playerId, archiveDay);
       if (!res.ok) {
         setMessage({ text: res.message, tone: "error", key: Date.now() });
         return;
@@ -232,6 +240,7 @@ export function CuleTen({ initial }: { initial: GameView }) {
           </p>
         </section>
       )}
+      {!game.finished && <GiveUp game="cule-ten" archiveDay={archiveDay} />}
     </div>
   );
 }

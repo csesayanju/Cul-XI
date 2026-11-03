@@ -738,7 +738,12 @@ export async function searchPlayers(db: SupabaseClient, query: string): Promise<
 export async function leagueTable(db: SupabaseClient, userId: string, day: string) {
   const [{ data: today }, { data: mine }] = await Promise.all([
     db.from("trivia_attempts").select("user_id, found, lives_left, finished").eq("day", day),
-    db.from("trivia_attempts").select("day").eq("user_id", userId).eq("finished", true),
+    db
+      .from("trivia_attempts")
+      .select("day")
+      .eq("user_id", userId)
+      .eq("finished", true)
+      .eq("live", true),
   ]);
   return {
     rows: (today ?? []) as {

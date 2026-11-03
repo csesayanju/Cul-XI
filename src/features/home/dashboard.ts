@@ -45,7 +45,12 @@ export async function loadDashboard(db: SupabaseClient, userId: string): Promise
           .eq("day", day),
       ),
     ),
-    db.from("trivia_attempts").select("day").eq("user_id", userId).eq("finished", true),
+    db
+      .from("trivia_attempts")
+      .select("day")
+      .eq("user_id", userId)
+      .eq("finished", true)
+      .eq("live", true),
   ]);
 
   const mine = new Set((teams.data ?? []).map((t) => Number(t.match_id)));

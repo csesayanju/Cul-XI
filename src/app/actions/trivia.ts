@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { playable } from "@/features/boards/server";
 import { triviaDay } from "@/features/trivia/game";
 import {
   importHistory,
@@ -34,13 +35,18 @@ export type GuessResult =
   | { ok: true; game: GameView; message: string; tone: "success" | "error" | "info" }
   | { ok: false; message: string };
 
-export async function triviaGuess(playerId: number): Promise<GuessResult> {
+export async function triviaGuess(playerId: number, archiveDay?: string): Promise<GuessResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, message: "Sign in to play." };
   if (!Number.isInteger(playerId) || playerId <= 0) return { ok: false, message: "Pick a player." };
 
   // Answers are checked with the service role; the browser never sees them.
-  const result = await makeGuess(createAdminClient(), user.id, triviaDay(), playerId, config());
+  // Today, or a missed archive day (last 15 days; practice, never on leaderboards).
+  const today = triviaDay();
+  const day = archiveDay ?? today;
+  const gate = await playable(createAdminClient(), "cule-ten", user.id, day, today);
+  if (!gate.ok) return { ok: false, message: gate.message };
+  const result = await makeGuess(createAdminClient(), user.id, day, playerId, config());
   if (!result) return { ok: false, message: "There's no Culé Ten today." };
   const { game, outcome } = result;
   revalidatePath("/trivia");

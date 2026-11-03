@@ -9,6 +9,7 @@ import { guessMystery, type MysteryView } from "@/features/mystery/server";
 import { answerOoo, type OooView } from "@/features/odd-one-out/server";
 import type { HolPick } from "@/features/higher-lower/game";
 import { answerHol, type HolView } from "@/features/higher-lower/server";
+import { playable } from "@/features/boards/server";
 import { triviaDay } from "@/features/trivia/game";
 import { getSessionUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -18,11 +19,16 @@ export type CareerResult =
   | { ok: false; message: string };
 
 /** A Career Path guess, checked on the server (today's player never reaches the browser). */
-export async function careerGuess(playerId: number): Promise<CareerResult> {
+export async function careerGuess(playerId: number, archiveDay?: string): Promise<CareerResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, message: "Sign in to play." };
   if (!Number.isInteger(playerId) || playerId <= 0) return { ok: false, message: "Pick a player." };
-  const result = await guessCareer(createAdminClient(), user.id, triviaDay(), playerId);
+  // Today, or a missed archive day (last 15 days; practice, never on leaderboards).
+  const today = triviaDay();
+  const day = archiveDay ?? today;
+  const gate = await playable(createAdminClient(), "career", user.id, day, today);
+  if (!gate.ok) return { ok: false, message: gate.message };
+  const result = await guessCareer(createAdminClient(), user.id, day, playerId);
   if (!result) return { ok: false, message: "There's no Career Path today." };
   const { game, outcome } = result;
   revalidatePath("/trivia/career");
@@ -79,7 +85,10 @@ export type ConnectionsResult =
   | { ok: true; game: ConnectionsView; message: string; tone: "success" | "error" | "info" }
   | { ok: false; message: string };
 
-export async function connectionsGuess(pick: number[]): Promise<ConnectionsResult> {
+export async function connectionsGuess(
+  pick: number[],
+  archiveDay?: string,
+): Promise<ConnectionsResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, message: "Sign in to play." };
   if (
@@ -89,7 +98,12 @@ export async function connectionsGuess(pick: number[]): Promise<ConnectionsResul
   ) {
     return { ok: false, message: "Pick four players." };
   }
-  const result = await guessConnections(createAdminClient(), user.id, triviaDay(), pick);
+  // Today, or a missed archive day (last 15 days; practice, never on leaderboards).
+  const today = triviaDay();
+  const day = archiveDay ?? today;
+  const gate = await playable(createAdminClient(), "connections", user.id, day, today);
+  if (!gate.ok) return { ok: false, message: gate.message };
+  const result = await guessConnections(createAdminClient(), user.id, day, pick);
   if (!result) return { ok: false, message: "There's no Connections today." };
   const { game, outcome } = result;
   revalidatePath("/trivia/connections");
@@ -139,11 +153,16 @@ export type XiResult =
   | { ok: true; game: XiView; message: string; tone: "success" | "error" | "info" }
   | { ok: false; message: string };
 
-export async function xiGuess(playerId: number): Promise<XiResult> {
+export async function xiGuess(playerId: number, archiveDay?: string): Promise<XiResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, message: "Sign in to play." };
   if (!Number.isInteger(playerId) || playerId <= 0) return { ok: false, message: "Pick a player." };
-  const result = await guessXi(createAdminClient(), user.id, triviaDay(), playerId);
+  // Today, or a missed archive day (last 15 days; practice, never on leaderboards).
+  const today = triviaDay();
+  const day = archiveDay ?? today;
+  const gate = await playable(createAdminClient(), "missing-xi", user.id, day, today);
+  if (!gate.ok) return { ok: false, message: gate.message };
+  const result = await guessXi(createAdminClient(), user.id, day, playerId);
   if (!result) return { ok: false, message: "There's no Missing XI today." };
   const { game, outcome } = result;
   revalidatePath("/trivia/missing-xi");
@@ -177,11 +196,16 @@ export type MysteryResult =
   | { ok: false; message: string };
 
 /** A Mystery Player guess, compared on the server (today's player never reaches the browser). */
-export async function mysteryGuess(playerId: number): Promise<MysteryResult> {
+export async function mysteryGuess(playerId: number, archiveDay?: string): Promise<MysteryResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, message: "Sign in to play." };
   if (!Number.isInteger(playerId) || playerId <= 0) return { ok: false, message: "Pick a player." };
-  const result = await guessMystery(createAdminClient(), user.id, triviaDay(), playerId);
+  // Today, or a missed archive day (last 15 days; practice, never on leaderboards).
+  const today = triviaDay();
+  const day = archiveDay ?? today;
+  const gate = await playable(createAdminClient(), "mystery", user.id, day, today);
+  if (!gate.ok) return { ok: false, message: gate.message };
+  const result = await guessMystery(createAdminClient(), user.id, day, playerId);
   if (!result) return { ok: false, message: "There's no Mystery Player today." };
   const { game, outcome } = result;
   revalidatePath("/trivia/mystery");

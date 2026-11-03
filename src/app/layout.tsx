@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { signOut } from "@/app/actions/auth";
 import { BottomNav, TopNav, type NavItem } from "@/components/app-nav";
+import { AppTour } from "@/components/app-tour";
 import { ServiceWorker } from "@/components/install-app";
 import { Wordmark } from "@/components/wordmark";
 import { getSessionUser } from "@/lib/auth";
@@ -42,7 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     { href: "/matches", label: "Fantasy", icon: "matches" },
     { href: "/leaderboard", label: "Table", icon: "table" },
     { href: "/trivia", label: "Trivia", icon: "trivia" },
-    { href: "/rules", label: "Rules", icon: "rules" },
+    { href: "/join", label: "You", icon: "you" },
     ...(user?.profile?.is_admin
       ? [{ href: "/admin", label: "Admin", icon: "admin" } as const]
       : []),
@@ -95,6 +96,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {children}
         </main>
         {user && <BottomNav items={nav} />}
+        {user && <AppTour />}
         <ServiceWorker />
         <footer
           className={
@@ -103,7 +105,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               : "mx-auto max-w-5xl px-4 pb-8 text-center text-xs text-ink-muted"
           }
         >
-          <Link href="/rules" className="underline">
+          <Link href="/matches/rules" className="underline">
             How points work
           </Link>{" "}
           ·{" "}

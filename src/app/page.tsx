@@ -154,7 +154,7 @@ export default async function HomePage({
               <p className="font-display text-lg leading-tight font-extrabold">Mystery Player</p>
             </Tile>
           </Link>
-          <Link href="/rules" className="group col-span-2 sm:col-span-1">
+          <Link href="/matches/rules" className="group col-span-2 sm:col-span-1">
             <Tile className="flex h-full min-h-28 flex-col justify-between">
               <span aria-hidden className="text-2xl">
                 📖

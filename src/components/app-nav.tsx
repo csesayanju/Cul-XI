@@ -8,7 +8,7 @@ import { cx } from "./ui";
 
 /** Main navigation: a pill bar in the header on desktop, a bottom tab bar on phones. */
 
-export type NavIcon = "matches" | "table" | "trivia" | "rules" | "admin";
+export type NavIcon = "matches" | "table" | "trivia" | "rules" | "admin" | "you";
 export interface NavItem {
   href: string;
   label: string;
@@ -39,6 +39,12 @@ const ICONS: Record<NavIcon, ReactNode> = {
     <>
       <path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5v-15Z" />
       <path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19M9 7h6M9 11h4" />
+    </>
+  ),
+  you: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
     </>
   ),
   admin: (

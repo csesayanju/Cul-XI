@@ -6,6 +6,7 @@ import { mysteryGuess } from "@/app/actions/games";
 import { Confetti } from "@/components/confetti";
 import { Flag } from "@/components/flag";
 import { cx, Notice } from "@/components/ui";
+import { GiveUp } from "@/app/trivia/give-up";
 import type { Clue, Hit } from "@/features/mystery/game";
 import type { MysteryView } from "@/features/mystery/server";
 import { PlayerSearch } from "@/features/trivia/components/player-search";
@@ -91,7 +92,14 @@ function ClueRow({ clue, fresh }: { clue: Clue; fresh: boolean }) {
 }
 
 /** Mystery Player: guess the hidden player; every guess shows how close it is. */
-export function Mystery({ initial }: { initial: MysteryView }) {
+export function Mystery({
+  initial,
+  archiveDay,
+}: {
+  initial: MysteryView;
+  /** Set when playing a past day from the archive (practice). */
+  archiveDay?: string;
+}) {
   const [game, setGame] = useState(initial);
   const [message, setMessage] = useState<{
     text: string;
@@ -102,7 +110,7 @@ export function Mystery({ initial }: { initial: MysteryView }) {
 
   function guess(playerId: number) {
     start(async () => {
-      const res = await mysteryGuess(playerId);
+      const res = await mysteryGuess(playerId, archiveDay);
       if (!res.ok) {
         setMessage({ text: res.message, tone: "error", key: Date.now() });
         return;
@@ -186,6 +194,7 @@ export function Mystery({ initial }: { initial: MysteryView }) {
           </p>
         </section>
       )}
+      {!game.finished && <GiveUp game="mystery" archiveDay={archiveDay} />}
     </div>
   );
 }

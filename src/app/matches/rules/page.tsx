@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
 import { Card, PageTitle } from "@/components/ui";
+
+import { FantasyTabs } from "../fantasy-tabs";
 import { POSITION_LABELS } from "@/features/fantasy/labels";
 import { PRICE_BANDS } from "@/features/fantasy/pricing";
 import { SCORING_RULES as R, TEAM_RULES } from "@/features/fantasy/scoring/rules";
@@ -84,9 +86,13 @@ function Example() {
 export default function RulesPage() {
   return (
     <div className="space-y-8">
-      <PageTitle subtitle="Everything that earns or costs points, and how prices work.">
+      <PageTitle
+        eyebrow="Fantasy football"
+        subtitle="Everything that earns or costs points, and how prices work."
+      >
         How points work
       </PageTitle>
+      <FantasyTabs active="/matches/rules" />
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold">Building your XI</h2>

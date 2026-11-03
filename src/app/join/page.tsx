@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { ReplayTourButton } from "@/components/app-tour";
+import { InstallApp } from "@/components/install-app";
 import { Card, PageTitle, SectionTitle } from "@/components/ui";
 import { getMyLeagues } from "@/features/fantasy/queries";
 import { requireUser } from "@/lib/auth";
@@ -8,7 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import { JoinForm, LeaveButton, NameForm } from "./join-form";
 
-export const metadata: Metadata = { title: "Your leagues" };
+export const metadata: Metadata = { title: "You" };
 
 /** Your name, the leagues you're in, and joining a private one with an invite code. */
 export default async function JoinPage() {
@@ -19,9 +21,9 @@ export default async function JoinPage() {
     <div className="space-y-6">
       <PageTitle
         eyebrow="You"
-        subtitle="Everyone plays in the Global league. Add a private league with an invite code."
+        subtitle="Your name, your leagues and the app. Everyone plays in the Global league; add a private one with an invite code."
       >
-        Your leagues
+        {user.profile?.display_name ?? "You"}
       </PageTitle>
 
       <Card>
@@ -62,6 +64,14 @@ export default async function JoinPage() {
         <Card>
           <JoinForm />
         </Card>
+      </section>
+
+      <section>
+        <SectionTitle>The app</SectionTitle>
+        <div className="space-y-3">
+          <InstallApp />
+          <ReplayTourButton />
+        </div>
       </section>
     </div>
   );

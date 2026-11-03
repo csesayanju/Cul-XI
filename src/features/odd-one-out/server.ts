@@ -2,7 +2,9 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { recordStreak } from "@/features/boards/server";
 import { cachedCategories, fameOrder } from "@/features/tiki-taka-toe/server";
+import { triviaDay } from "@/features/trivia/game";
 
 import { makeRound, scoreOoo, type OooCategory, type OooRound } from "./game";
 
@@ -118,6 +120,8 @@ export async function answerOoo(
   const score = scoreOoo({ streak: data.streak, best: data.best }, right);
   const round = await newRound(db);
   await save(db, userId, round, score);
+  // Today's best streak, for the day / week / month boards.
+  if (right) await recordStreak(db, "odd-one-out", userId, triviaDay(), score.streak);
   const [answer] = await names(db, [answerId]);
   return {
     right,

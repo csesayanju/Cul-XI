@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { guessTtt, type TttView } from "@/features/tiki-taka-toe/server";
+import { playable } from "@/features/boards/server";
 import { triviaDay } from "@/features/trivia/game";
 import { getSessionUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -11,7 +12,11 @@ export type TttResult =
   | { ok: true; game: TttView; message: string; tone: "success" | "error" | "info" }
   | { ok: false; message: string };
 
-export async function tttGuess(cell: number, playerId: number): Promise<TttResult> {
+export async function tttGuess(
+  cell: number,
+  playerId: number,
+  archiveDay?: string,
+): Promise<TttResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, message: "Sign in to play." };
   if (!Number.isInteger(cell) || cell < 0 || cell > 8)
@@ -19,7 +24,12 @@ export async function tttGuess(cell: number, playerId: number): Promise<TttResul
   if (!Number.isInteger(playerId) || playerId <= 0) return { ok: false, message: "Pick a player." };
 
   // Checked on the server with the service role; the grid's example answers never leave it.
-  const result = await guessTtt(createAdminClient(), user.id, triviaDay(), cell, playerId);
+  // Today, or a missed archive day (last 15 days; practice, never on leaderboards).
+  const today = triviaDay();
+  const day = archiveDay ?? today;
+  const gate = await playable(createAdminClient(), "grid", user.id, day, today);
+  if (!gate.ok) return { ok: false, message: gate.message };
+  const result = await guessTtt(createAdminClient(), user.id, day, cell, playerId);
   if (!result) return { ok: false, message: "There's no grid today." };
   const { game, outcome } = result;
   revalidatePath("/trivia/grid");

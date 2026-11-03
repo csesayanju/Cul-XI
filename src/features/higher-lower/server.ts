@@ -2,6 +2,8 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { recordStreak } from "@/features/boards/server";
+import { triviaDay } from "@/features/trivia/game";
 import { eraOf } from "@/features/trivia/history-lists";
 
 import { applyHol, nextOpponent, type HolPick, type HolRun } from "./game";
@@ -128,6 +130,8 @@ export async function answerHol(
   if (!a || !b) return null;
   const { run: next, right } = applyHol(run, { a: a.goals, b: b.goals }, pick, [...pool.keys()]);
   await save(db, userId, next);
+  // Today's best streak, for the day / week / month boards.
+  if (right) await recordStreak(db, "higher-lower", userId, triviaDay(), next.streak);
   return { right, revealed: { a, b }, next: toView(next, pool) };
 }
 

@@ -21,6 +21,9 @@ own database.** External APIs are slow, rate-limited and can disappear; our Post
   fetch. Box-score `statistics` may be an object, not the documented array.
 - Admin/cron routes are protected by `CRON_SECRET` or an admin session.
 
+For schema reviews, slow queries, index choice, locking or migration safety, also use the
+`backend-database-engineer` skill (deep database reference).
+
 ## Project facts
 
 - Migrations: `supabase/migrations/<timestamp>_<name>.sql`, next number after the latest.

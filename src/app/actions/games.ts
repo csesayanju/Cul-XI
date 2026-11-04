@@ -10,6 +10,8 @@ import { answerOoo, type OooView } from "@/features/odd-one-out/server";
 import type { HolPick } from "@/features/higher-lower/game";
 import { answerHol, type HolView } from "@/features/higher-lower/server";
 import { playable } from "@/features/boards/server";
+import { seasonLabel } from "@/features/which-season/season";
+import { guessSeason, type SeasonView } from "@/features/which-season/server";
 import { triviaDay } from "@/features/trivia/game";
 import { getSessionUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -228,5 +230,48 @@ export async function mysteryGuess(playerId: number, archiveDay?: string): Promi
         tone: "info",
         message: "Today's mystery is solved — back tomorrow.",
       };
+  }
+}
+
+export type SeasonResult =
+  | { ok: true; game: SeasonView; message: string; tone: "success" | "error" | "info" }
+  | { ok: false; message: string };
+
+/** A Which Season? guess (a season's start year), checked on the server. */
+export async function seasonGuess(startYear: number, archiveDay?: string): Promise<SeasonResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: "Sign in to play." };
+  if (!Number.isInteger(startYear)) return { ok: false, message: "Pick a season." };
+  const today = triviaDay();
+  const day = archiveDay ?? today;
+  const gate = await playable(createAdminClient(), "season", user.id, day, today);
+  if (!gate.ok) return { ok: false, message: gate.message };
+  const result = await guessSeason(createAdminClient(), user.id, day, startYear);
+  if (!result) return { ok: false, message: "There's no season to guess today." };
+  const { game, outcome } = result;
+  revalidatePath("/trivia/season");
+  switch (outcome.kind) {
+    case "correct":
+      return {
+        ok: true,
+        game,
+        tone: "success",
+        message: `${seasonLabel(startYear)} — nailed it! 🎯`,
+      };
+    case "wrong":
+      return {
+        ok: true,
+        game,
+        tone: "error",
+        message: game.finished
+          ? "Out of guesses."
+          : `Not ${seasonLabel(startYear)}: go ${outcome.direction}${outcome.off <= 3 ? " — so close!" : "."} New clue unlocked.`,
+      };
+    case "repeat":
+      return { ok: true, game, tone: "info", message: "You've already tried that season." };
+    case "invalid":
+      return { ok: true, game, tone: "info", message: "Pick a season from the list." };
+    case "over":
+      return { ok: true, game, tone: "info", message: "Today's puzzle is done — back tomorrow." };
   }
 }

@@ -1,6 +1,7 @@
 # Query Optimization
 
 ## Contents
+
 1. Diagnosis workflow
 2. Reading plans
 3. Index design
@@ -23,6 +24,7 @@
 ## 2. Reading plans
 
 **Postgres red flags**
+
 - `Seq Scan` on a big table with a selective filter → missing/unusable index.
 - `Rows Removed by Filter` large → index doesn't cover the predicate.
 - `Sort` with `external merge Disk` → add an index matching ORDER BY, or raise `work_mem` for that query.
@@ -31,12 +33,14 @@
 - `Buffers: shared read` ≫ `hit` → cold cache / I/O bound.
 
 **MySQL red flags** (`EXPLAIN` columns)
+
 - `type: ALL` (full scan) or `index` (full index scan) on large tables.
 - `Extra: Using filesort` / `Using temporary` on hot queries.
 - `key: NULL` while `possible_keys` lists candidates → optimizer rejected them (low selectivity, type mismatch, function on column).
 - `rows` × `filtered` tells you approximate rows examined.
 
 **Mongo red flags**
+
 - `COLLSCAN` stage; `totalDocsExamined` ≫ `nReturned`; `SORT` stage in memory (no index supports sort).
 
 ## 3. Index design
@@ -52,21 +56,21 @@
 
 ## 4. Common anti-patterns and rewrites
 
-| Anti-pattern | Why it hurts | Fix |
-|---|---|---|
-| Function on indexed column: `WHERE date(created_at) = '2026-01-01'` | Index unusable | Range: `created_at >= '2026-01-01' AND created_at < '2026-01-02'` or expression index |
-| Implicit cast: varchar column compared to number (MySQL), or param type mismatch | Index unusable | Match types |
-| `LIKE '%term'` | No B-tree use | trigram/full-text index |
-| `OR` across different columns | Often full scan | `UNION ALL` of indexed branches, or composite/bitmap |
-| `NOT IN (subquery)` with NULLs | Wrong results + slow | `NOT EXISTS` |
-| `SELECT *` | Blocks index-only scans, wastes I/O, breaks with schema changes | Select needed columns |
-| `COUNT(*)` for "has any" | Scans everything | `EXISTS (…)` / `LIMIT 1` |
-| Exact counts on huge tables for UI | Expensive every request | Estimates (`pg_class.reltuples`), cached counts |
-| Correlated subquery per row | N executions | JOIN / LATERAL / window function |
-| `ORDER BY random()` | Full sort | `TABLESAMPLE`, or random id range |
-| Large `IN (…)` lists from app | Plan churn, parse cost | `= ANY($1::bigint[])` (PG), temp table join |
-| Updating/deleting millions of rows in one statement | Long locks, replication lag, bloat | Batch by PK range (1k–10k rows), commit per batch |
-| Generic plans on skewed data (PG prepared statements) | Bad plan for rare values | `plan_cache_mode`, or split query paths |
+| Anti-pattern                                                                     | Why it hurts                                                    | Fix                                                                                   |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Function on indexed column: `WHERE date(created_at) = '2026-01-01'`              | Index unusable                                                  | Range: `created_at >= '2026-01-01' AND created_at < '2026-01-02'` or expression index |
+| Implicit cast: varchar column compared to number (MySQL), or param type mismatch | Index unusable                                                  | Match types                                                                           |
+| `LIKE '%term'`                                                                   | No B-tree use                                                   | trigram/full-text index                                                               |
+| `OR` across different columns                                                    | Often full scan                                                 | `UNION ALL` of indexed branches, or composite/bitmap                                  |
+| `NOT IN (subquery)` with NULLs                                                   | Wrong results + slow                                            | `NOT EXISTS`                                                                          |
+| `SELECT *`                                                                       | Blocks index-only scans, wastes I/O, breaks with schema changes | Select needed columns                                                                 |
+| `COUNT(*)` for "has any"                                                         | Scans everything                                                | `EXISTS (…)` / `LIMIT 1`                                                              |
+| Exact counts on huge tables for UI                                               | Expensive every request                                         | Estimates (`pg_class.reltuples`), cached counts                                       |
+| Correlated subquery per row                                                      | N executions                                                    | JOIN / LATERAL / window function                                                      |
+| `ORDER BY random()`                                                              | Full sort                                                       | `TABLESAMPLE`, or random id range                                                     |
+| Large `IN (…)` lists from app                                                    | Plan churn, parse cost                                          | `= ANY($1::bigint[])` (PG), temp table join                                           |
+| Updating/deleting millions of rows in one statement                              | Long locks, replication lag, bloat                              | Batch by PK range (1k–10k rows), commit per batch                                     |
+| Generic plans on skewed data (PG prepared statements)                            | Bad plan for rare values                                        | `plan_cache_mode`, or split query paths                                               |
 
 ## 5. Pagination
 

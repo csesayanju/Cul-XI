@@ -713,11 +713,18 @@ export interface SearchResult {
 export async function searchPlayers(db: SupabaseClient, query: string): Promise<SearchResult[]> {
   const q = normalise(query);
   if (q.length < 2) return [];
+  const safe = q.replace(/[%_\\]/g, "");
   const { data } = await db
     .from("trivia_players")
     .select("id, name, nationality, country_code, barca_from, barca_to, birth_year")
-    // Trigram-indexed; ~15k people across La Liga, most famous first.
-    .ilike("search_text", `%${q.replace(/[%_\\]/g, "")}%`)
+    // ~15k people across La Liga, most famous first. Three+ letters: anywhere in the name
+    // (trigram index). Two letters are too short for trigrams, so match the start of the
+    // name instead (prefix index) rather than scanning everyone.
+    .filter(
+      "search_text",
+      safe.length < 3 ? "like" : "ilike",
+      safe.length < 3 ? `${safe}%` : `%${safe}%`,
+    )
     .order("fame", { ascending: false, nullsFirst: false })
     .limit(8);
   return (data ?? []).map((p) => ({

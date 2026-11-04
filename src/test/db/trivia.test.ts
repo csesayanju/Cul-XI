@@ -282,3 +282,49 @@ describe("Archive plays and endless-game boards", () => {
     ).rejects.toThrow(/permission denied/);
   });
 });
+
+describe("Which Season? and history security", () => {
+  beforeAll(async () => {
+    await db.exec(`
+      insert into public.barca_seasons
+        (start_year, season, division, played, won, drawn, lost, goals_for, goals_against, points, position)
+        values (2008, '2008–09', 'La Liga', 38, 27, 6, 5, 105, 35, 87, 1);
+      insert into public.liga_seasons (start_year, season, champion, runner_up)
+        values (2008, '2008–09', 'Barcelona', 'Real Madrid');
+      insert into public.clasicos (key, competition, season, start_year, home, home_goals, away_goals)
+        values ('La Liga|2009-05-02|35|Real Madrid', 'La Liga', '2008–09', 2008, 'Real Madrid', 2, 6);
+      insert into public.season_daily (day, start_year) values ('2020-01-02', 2008);
+      insert into public.season_attempts (user_id, day, guesses) values ('${BRUNO}', '2020-01-02', '[2010]');
+    `);
+  });
+
+  it("never lets players read the history tables or today's season", async () => {
+    for (const t of ["barca_seasons", "liga_seasons", "clasicos"]) {
+      expect(await count(`select * from public.${t}`, BRUNO)).toBe(0);
+    }
+    await expect(count("select * from public.season_daily", BRUNO)).rejects.toThrow(
+      /permission denied/,
+    );
+    expect(await count("select * from public.barca_seasons", ADMIN)).toBe(1);
+  });
+
+  it("rejects a season whose results don't add up", async () => {
+    await expect(
+      db.exec(`insert into public.barca_seasons
+        (start_year, season, division, played, won, drawn, lost, goals_for, goals_against, points, position)
+        values (1999, '1999–00', 'La Liga', 38, 1, 1, 1, 0, 0, 0, 1)`),
+    ).rejects.toThrow(/check/);
+  });
+
+  it("shows league-mates' results, stamps past days as practice, never lets players write", async () => {
+    expect(await count("select * from public.season_attempts", ADMIN)).toBe(1);
+    const r = await db.query<{ live: boolean }>(
+      `select live from public.season_attempts where user_id = $1`,
+      [BRUNO],
+    );
+    expect(r.rows[0]!.live).toBe(false); // a past day is practice
+    await expect(
+      asUser(db, BRUNO, (tx) => tx.query(`update public.season_attempts set solved = true`)),
+    ).rejects.toThrow(/permission denied/);
+  });
+});

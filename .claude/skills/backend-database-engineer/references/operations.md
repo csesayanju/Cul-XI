@@ -1,6 +1,7 @@
 # Operations & Reliability
 
 ## Contents
+
 1. Zero-downtime migrations
 2. Lock behavior cheat sheet
 3. Backfills
@@ -19,6 +20,7 @@ Use **expand → migrate → contract** so old and new app versions both work du
 3. **Contract**: after all code uses the new shape, add NOT NULL / drop old column in a later deploy.
 
 Rules:
+
 - Set a **lock timeout** on every migration session (PG `SET lock_timeout = '3s'`; MySQL `SET SESSION lock_wait_timeout = 5`) and retry. A DDL waiting for a lock blocks every query queued behind it — this is how "a quick ALTER" takes a site down.
 - One risky change per migration; don't mix DDL and large data updates in one transaction.
 - Renames: add new column/table, dual-write, switch reads, drop old. Never rename in place on a live system with old code running.
@@ -29,25 +31,27 @@ Rules:
 ## 2. Lock behavior cheat sheet
 
 **PostgreSQL (11+)**
-| Operation | Safe online? |
-|---|---|
-| `ADD COLUMN` nullable, or with constant/non-volatile default | Yes (metadata only; brief ACCESS EXCLUSIVE) |
-| `ADD COLUMN … DEFAULT now()`/volatile default | No — table rewrite |
-| `ALTER COLUMN TYPE` (most changes) | No — rewrite (exceptions: varchar length increase, varchar→text) |
-| `SET NOT NULL` | Scans table under ACCESS EXCLUSIVE. Safe path: `ADD CONSTRAINT … CHECK (col IS NOT NULL) NOT VALID` → `VALIDATE CONSTRAINT` → `SET NOT NULL` (PG12+ uses the valid check) → drop check |
-| `ADD FOREIGN KEY` | Use `NOT VALID` then `VALIDATE CONSTRAINT` separately |
-| `ADD UNIQUE / PK` | Build `CREATE UNIQUE INDEX CONCURRENTLY` first, then `ADD CONSTRAINT … USING INDEX` |
-| `CREATE INDEX` | Blocks writes → use `CONCURRENTLY` (not in a transaction; check for `INVALID` index on failure and drop/retry) |
-| `DROP INDEX` | Use `DROP INDEX CONCURRENTLY` |
+
+| Operation                                                    | Safe online?                                                                                                                                                                           |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ADD COLUMN` nullable, or with constant/non-volatile default | Yes (metadata only; brief ACCESS EXCLUSIVE)                                                                                                                                            |
+| `ADD COLUMN … DEFAULT now()`/volatile default                | No — table rewrite                                                                                                                                                                     |
+| `ALTER COLUMN TYPE` (most changes)                           | No — rewrite (exceptions: varchar length increase, varchar→text)                                                                                                                       |
+| `SET NOT NULL`                                               | Scans table under ACCESS EXCLUSIVE. Safe path: `ADD CONSTRAINT … CHECK (col IS NOT NULL) NOT VALID` → `VALIDATE CONSTRAINT` → `SET NOT NULL` (PG12+ uses the valid check) → drop check |
+| `ADD FOREIGN KEY`                                            | Use `NOT VALID` then `VALIDATE CONSTRAINT` separately                                                                                                                                  |
+| `ADD UNIQUE / PK`                                            | Build `CREATE UNIQUE INDEX CONCURRENTLY` first, then `ADD CONSTRAINT … USING INDEX`                                                                                                    |
+| `CREATE INDEX`                                               | Blocks writes → use `CONCURRENTLY` (not in a transaction; check for `INVALID` index on failure and drop/retry)                                                                         |
+| `DROP INDEX`                                                 | Use `DROP INDEX CONCURRENTLY`                                                                                                                                                          |
 
 **MySQL 8.0 InnoDB**
-| Operation | Algorithm |
-|---|---|
-| `ADD COLUMN` (last position, 8.0.12+; any position 8.0.29+) | INSTANT |
-| Add secondary index | INPLACE, LOCK=NONE (but long, and replicas apply it serially → lag) |
-| Change column type | COPY — blocks writes; use gh-ost/pt-osc |
-| Drop column | INPLACE w/ rebuild (INSTANT in 8.0.29+) |
-Always specify `ALGORITHM=…, LOCK=…` explicitly so MySQL errors instead of silently falling back to a blocking copy. Watch metadata locks: a long-running transaction holding an MDL blocks the ALTER, which then blocks everything.
+
+| Operation                                                                                                                                                                                                                            | Algorithm                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `ADD COLUMN` (last position, 8.0.12+; any position 8.0.29+)                                                                                                                                                                          | INSTANT                                                             |
+| Add secondary index                                                                                                                                                                                                                  | INPLACE, LOCK=NONE (but long, and replicas apply it serially → lag) |
+| Change column type                                                                                                                                                                                                                   | COPY — blocks writes; use gh-ost/pt-osc                             |
+| Drop column                                                                                                                                                                                                                          | INPLACE w/ rebuild (INSTANT in 8.0.29+)                             |
+| Always specify `ALGORITHM=…, LOCK=…` explicitly so MySQL errors instead of silently falling back to a blocking copy. Watch metadata locks: a long-running transaction holding an MDL blocks the ALTER, which then blocks everything. |
 
 **MongoDB**: index builds (4.2+) hold exclusive lock only at start/end; still resource-intensive — build on a rolling basis for very large collections. Schema changes are app-level: version documents (`schemaVersion`) and migrate lazily or in batches.
 

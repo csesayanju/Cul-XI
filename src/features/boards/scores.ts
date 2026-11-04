@@ -3,7 +3,8 @@
  * adds a player's points over the period. Endless games use the best streak in the period.
  */
 
-export type DailyGame = "cule-ten" | "grid" | "mystery" | "connections" | "missing-xi" | "career";
+export type DailyGame =
+  "cule-ten" | "grid" | "mystery" | "connections" | "missing-xi" | "career" | "season";
 export type EndlessGame = "higher-lower" | "odd-one-out";
 export type BoardGame = DailyGame | EndlessGame;
 
@@ -60,6 +61,13 @@ export const DAILY_GAMES: Record<DailyGame, GameInfo> = {
     table: "career_attempts",
     columns: "guesses, solved",
     score: (r) => (r.solved ? Math.max(1, 6 - len(r.guesses)) : 0),
+    unit: "pts",
+  },
+  // Solved: fewer guesses score higher (6 guesses: 6 points in one, 1 in six).
+  season: {
+    table: "season_attempts",
+    columns: "guesses, solved",
+    score: (r) => (r.solved ? Math.max(1, 7 - len(r.guesses)) : 0),
     unit: "pts",
   },
 };

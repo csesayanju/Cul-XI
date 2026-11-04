@@ -5,6 +5,7 @@ import { NO_LOGO } from "@/features/career/import";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { commonsPage } from "@/lib/wikidata/careers";
 import { articleUrl, HISTORY_PAGES } from "@/lib/wikipedia/barca-history";
+import { DATA_PAGES } from "@/lib/wikipedia/history-data";
 
 export const metadata: Metadata = { title: "Credits" };
 // Credits change as photos are found; render on request.
@@ -138,8 +139,8 @@ export default async function CreditsPage() {
       <h2 className="mt-8 mb-2 text-lg font-bold">Culé Ten facts</h2>
       <Card className="space-y-2 text-sm">
         <p>
-          Culé Ten&apos;s history lists are built from facts in these Wikipedia articles (text
-          licensed{" "}
+          Culé Ten&apos;s history lists and Which Season? are built from facts in these Wikipedia
+          articles (text licensed{" "}
           <a
             href="https://creativecommons.org/licenses/by-sa/4.0/"
             target="_blank"
@@ -151,13 +152,15 @@ export default async function CreditsPage() {
           ), imported once and stored:
         </p>
         <ul className="list-disc space-y-1 pl-5">
-          {Object.values(HISTORY_PAGES).map((title) => (
-            <li key={title}>
-              <a href={articleUrl(title)} target="_blank" rel="noreferrer" className="underline">
-                {title}
-              </a>
-            </li>
-          ))}
+          {[...new Set([...Object.values(HISTORY_PAGES), ...Object.values(DATA_PAGES)])].map(
+            (title) => (
+              <li key={title}>
+                <a href={articleUrl(title)} target="_blank" rel="noreferrer" className="underline">
+                  {title}
+                </a>
+              </li>
+            ),
+          )}
         </ul>
         <p>
           Names, nationalities and career years come from{" "}

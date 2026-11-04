@@ -1,6 +1,7 @@
 # Schema Design
 
 ## Contents
+
 1. Modeling process
 2. Keys
 3. Types
@@ -28,15 +29,15 @@
 
 ## 3. Types
 
-| Data | Use | Avoid |
-|---|---|---|
-| Money | `NUMERIC(19,4)` or integer minor units (`bigint` cents) + currency code | `float`, `double`, `money` (PG) |
-| Timestamps | `timestamptz` (PG); MySQL `DATETIME(6)` stored as UTC (TIMESTAMP has 2038 limit) | local-time `timestamp` without zone |
-| Strings | `text` (PG) w/ `CHECK (length(x) <= n)` if needed; `VARCHAR(n)` in MySQL with `utf8mb4` | `utf8` (MySQL 3-byte) |
-| Enums | lookup table, or `text` + `CHECK (x IN (...))`; PG `ENUM` is ok but adding values has caveats and removing is hard | magic integers without docs |
-| Booleans | `boolean` | `'Y'/'N'` strings |
-| Semi-structured | `jsonb` (PG) / `JSON` (MySQL) for genuinely variable attributes | jsonb for fields you filter/join on constantly — promote them to columns |
-| IP / ranges | PG `inet`, `cidr`, `tstzrange` | strings |
+| Data            | Use                                                                                                                | Avoid                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| Money           | `NUMERIC(19,4)` or integer minor units (`bigint` cents) + currency code                                            | `float`, `double`, `money` (PG)                                          |
+| Timestamps      | `timestamptz` (PG); MySQL `DATETIME(6)` stored as UTC (TIMESTAMP has 2038 limit)                                   | local-time `timestamp` without zone                                      |
+| Strings         | `text` (PG) w/ `CHECK (length(x) <= n)` if needed; `VARCHAR(n)` in MySQL with `utf8mb4`                            | `utf8` (MySQL 3-byte)                                                    |
+| Enums           | lookup table, or `text` + `CHECK (x IN (...))`; PG `ENUM` is ok but adding values has caveats and removing is hard | magic integers without docs                                              |
+| Booleans        | `boolean`                                                                                                          | `'Y'/'N'` strings                                                        |
+| Semi-structured | `jsonb` (PG) / `JSON` (MySQL) for genuinely variable attributes                                                    | jsonb for fields you filter/join on constantly — promote them to columns |
+| IP / ranges     | PG `inet`, `cidr`, `tstzrange`                                                                                     | strings                                                                  |
 
 ## 4. Constraints
 

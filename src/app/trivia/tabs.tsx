@@ -12,6 +12,7 @@ const TABS = [
   { href: "/trivia/connections", label: "Connect", icon: "🧩" },
   { href: "/trivia/missing-xi", label: "Missing XI", icon: "🏟️" },
   { href: "/trivia/career", label: "Career", icon: "🧭" },
+  { href: "/trivia/season", label: "Season", icon: "📅" },
   { href: "/trivia/odd-one-out", label: "Odd One", icon: "🕵️" },
   { href: "/trivia/higher-lower", label: "Hi-Lo", icon: "📈" },
 ] as const;

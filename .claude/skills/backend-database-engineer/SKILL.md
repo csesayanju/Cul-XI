@@ -46,13 +46,13 @@ ground rules too; where they differ from generic advice here, they win.
 
 Read only the reference(s) the task needs. They hold checklists and engine-specific detail that are too long to keep here.
 
-| Task | Read |
-|---|---|
-| New schema, data model review, normalization, keys, constraints, types | `references/schema-design.md` |
-| Slow query, EXPLAIN output, index choice, pagination, aggregation | `references/query-optimization.md` |
-| ORM models, repositories, transactions, isolation, N+1, pooling, idempotency | `references/data-layer.md` |
-| Migrations on live tables, backups, replication, partitioning, scaling, monitoring | `references/operations.md` |
-| Engine-specific behavior and gotchas | `references/engines.md` (sections: PostgreSQL, MySQL/MariaDB, MongoDB, Redis) |
+| Task                                                                               | Read                                                                          |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| New schema, data model review, normalization, keys, constraints, types             | `references/schema-design.md`                                                 |
+| Slow query, EXPLAIN output, index choice, pagination, aggregation                  | `references/query-optimization.md`                                            |
+| ORM models, repositories, transactions, isolation, N+1, pooling, idempotency       | `references/data-layer.md`                                                    |
+| Migrations on live tables, backups, replication, partitioning, scaling, monitoring | `references/operations.md`                                                    |
+| Engine-specific behavior and gotchas                                               | `references/engines.md` (sections: PostgreSQL, MySQL/MariaDB, MongoDB, Redis) |
 
 Most real tasks touch two areas (e.g. "add a column and backfill it" = schema + operations). Read both.
 

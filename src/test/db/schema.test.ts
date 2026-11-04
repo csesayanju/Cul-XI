@@ -74,6 +74,22 @@ describe("migrations + seed", () => {
 });
 
 describe("row-level security", () => {
+  it("evaluates user checks once per query, not once per row", async () => {
+    // Bare auth.uid() / is_admin() / league helpers in a policy run for every row checked;
+    // wrapped in a sub-select they run once (see the db_tuning migration).
+    const r = await db.query<{ policy: string; expr: string }>(
+      `select tablename || ': ' || policyname as policy,
+              coalesce(qual, '') || ' ' || coalesce(with_check, '') as expr
+       from pg_policies where schemaname = 'public'`,
+    );
+    const perRow = r.rows.filter((x) =>
+      /auth\.uid\(\)|is_admin\(\)|shares_league_with|is_league_member/.test(
+        x.expr.replace(/\( SELECT (auth\.uid|is_admin)\(\) AS \w+\)/g, ""),
+      ),
+    );
+    expect(perRow.map((x) => x.policy)).toEqual([]);
+  });
+
   it("hides everything from anonymous users", async () => {
     await expect(count("select * from public.matches", null)).rejects.toThrow(/permission denied/);
   });

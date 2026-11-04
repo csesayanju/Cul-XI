@@ -7,6 +7,7 @@ import { ensureConnectionsDay } from "@/features/connections/server";
 import { ensureXiDay } from "@/features/missing-xi/server";
 import { ensureMysteryDay } from "@/features/mystery/server";
 import { ensureGrid } from "@/features/tiki-taka-toe/server";
+import { ensureSeasonDay } from "@/features/which-season/server";
 import { ensureDaily } from "@/features/trivia/server";
 
 import { archiveDays, isArchiveDay, periodStart, type Period } from "./period";
@@ -48,6 +49,8 @@ export async function ensureDay(
       return (await ensureXiDay(db, day)) != null;
     case "career":
       return (await ensureCareerDay(db, day)) != null;
+    case "season":
+      return (await ensureSeasonDay(db, day)) != null;
   }
 }
 

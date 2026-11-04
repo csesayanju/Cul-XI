@@ -25,7 +25,7 @@ function MatchCard({ match, hasTeam }: { match: MatchSummary; hasTeam: boolean }
   const away = match.is_home ? match.opponent_name : "Barça";
 
   return (
-    <Link href={`/matches/${match.id}/pick`} className="group block">
+    <Link href={`/matches/${match.id}/pick`} className="group block min-w-0">
       <Card className="flex items-center gap-3 p-3 transition duration-150 group-hover:border-accent/60 group-active:scale-[0.99]">
         <LocalDateTile
           iso={match.kickoff_at}
@@ -40,7 +40,7 @@ function MatchCard({ match, hasTeam }: { match: MatchSummary; hasTeam: boolean }
               {match.is_home ? "Home" : "Away"}
             </span>
           </div>
-          <p className="truncate font-display text-lg font-extrabold tracking-tight">
+          <p className="line-clamp-2 font-display text-lg leading-tight font-extrabold tracking-tight">
             {home} <span className="font-medium text-ink-muted">vs</span> {away}
           </p>
           <p className="text-xs text-ink-muted">

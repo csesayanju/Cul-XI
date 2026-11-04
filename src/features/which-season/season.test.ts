@@ -50,10 +50,10 @@ describe("Which Season?", () => {
       "Barça top scorer",
     ]);
     expect(clues[0]!.value).toBe("W27 D6 L5 · 105 scored, 35 conceded");
-    expect(clues[1]!.value).toBe("1st of the table, 87 pts");
+    expect(clues[1]!.value).toBe("Finished 1st · 87 pts");
     expect(clues[4]!.value).toBe("Diego Forlán (Atlético Madrid) · 32 goals");
     expect(allClues({ ...treble, position: 2, champion: "Real Madrid" })[1]!.value).toBe(
-      "2nd of the table, 87 pts · champions: Real Madrid",
+      "Finished 2nd · 87 pts · champions: Real Madrid",
     );
     expect(allClues({ ...treble, europe: null, copa: null })[2]!.value).toBe("Didn't take part");
   });

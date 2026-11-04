@@ -145,6 +145,15 @@ export function parseBarcaSeasons(html: string): BarcaSeason[] {
     const [played, won, drawn, lost, gf, ga, pts] = [1, 2, 3, 4, 5, 6, 7].map(n);
     const position = ordinal(at(row, league + 8));
     if ([played, won, drawn, lost, gf, ga, pts, position].some((v) => v == null)) continue;
+    let draws = drawn!;
+    if (won! + draws + lost! !== played!) {
+      // A typo in one column (1931–32 lists 1 draw for 4): repair it only when the points
+      // confirm it (2 a win before 1995–96, 3 since); otherwise leave the season out.
+      const fixed = played! - won! - lost!;
+      const perWin = startYear >= 1995 ? 3 : 2;
+      if (fixed < 0 || perWin * won! + fixed !== pts!) continue;
+      draws = fixed;
+    }
     const europeComp = at(row, europe);
     const europeResult = roundName(at(row, europe + 1));
     bySeason.set(season, {
@@ -153,7 +162,7 @@ export function parseBarcaSeasons(html: string): BarcaSeason[] {
       division: at(row, league),
       played: played!,
       won: won!,
-      drawn: drawn!,
+      drawn: draws,
       lost: lost!,
       goalsFor: gf!,
       goalsAgainst: ga!,

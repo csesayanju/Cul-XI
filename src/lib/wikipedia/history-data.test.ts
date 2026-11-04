@@ -117,6 +117,16 @@ describe("history parsers", () => {
     expect(c[1]).toMatchObject({ round: "Final", note: "a.e.t.", startYear: 2024 });
   });
 
+  it("repairs a draws typo only when the points confirm it", () => {
+    const row = (d: string, pts: string) =>
+      SEASONS.replace(
+        /<td>2008–09<\/td>[\s\S]*?<\/tr>/,
+        `<td>1931–32</td><td>La Liga</td><td>18</td><td>10</td><td>${d}</td><td>4</td><td>40</td><td>26</td><td>${pts}</td><td>3rd</td><td>RU</td><td></td><td></td><td></td><td></td><td>Samitier</td><td>10</td></tr>`,
+      );
+    expect(parseBarcaSeasons(row("1", "24"))[0]).toMatchObject({ season: "1931–32", drawn: 4 });
+    expect(parseBarcaSeasons(row("1", "30")).map((s) => s.season)).toEqual(["2009–10"]);
+  });
+
   it("parses scores, dates and round codes", () => {
     expect(parseScore("1–1 (4–3 p)")).toEqual({ home: 1, away: 1, note: "4–3 p" });
     expect(parseScore("")).toBeNull();

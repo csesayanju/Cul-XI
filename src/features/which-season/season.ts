@@ -69,7 +69,7 @@ export function allClues(f: SeasonFacts): Clue[] {
     {
       label: "League finish",
       value:
-        `${ordinal(f.position)} of the table, ${f.points} pts` +
+        `Finished ${ordinal(f.position)} · ${f.points} pts` +
         (f.champion && !isBarca(f.champion) && f.position !== 1
           ? ` · champions: ${f.champion}`
           : ""),

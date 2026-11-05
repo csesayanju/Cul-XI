@@ -6,6 +6,7 @@ import { injuryLabel } from "@/features/fantasy/availability";
 import { listMatchPlayers } from "@/features/fantasy/queries";
 import { toStats } from "@/features/fantasy/sync/recalculate-points";
 import { requireAdmin } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 import { StatsEditor, SyncPanel, type EditablePlayer } from "./admin-forms";
@@ -21,11 +22,17 @@ export default async function AdminPage({
   const { match } = await searchParams;
   const supabase = await createClient();
 
-  const { data: matchRows } = await supabase
-    .from("matches")
-    .select("id, opponent_name, kickoff_at, status")
-    .order("kickoff_at", { ascending: false })
-    .limit(40);
+  const admin = createAdminClient();
+  const [{ data: matchRows }, { count: seatsUsed }, { data: limits }] = await Promise.all([
+    supabase
+      .from("matches")
+      .select("id, opponent_name, kickoff_at, status")
+      .order("kickoff_at", { ascending: false })
+      .limit(40),
+    admin.from("profiles").select("id", { count: "exact", head: true }),
+    admin.from("app_limits").select("max_users").maybeSingle(),
+  ]);
+  const seatCap = limits?.max_users ?? null;
   const matches = (matchRows ?? []).map((m) => ({
     id: Number(m.id),
     label: `${new Date(m.kickoff_at as string).toISOString().slice(0, 10)} · vs ${m.opponent_name} (${m.status})`,
@@ -65,7 +72,14 @@ export default async function AdminPage({
         Admin
       </PageTitle>
 
-      <p className="text-sm">
+      <Notice tone={seatCap != null && (seatsUsed ?? 0) >= seatCap * 0.9 ? "error" : "info"}>
+        Seats: <strong className="tabular-nums">{seatsUsed ?? "?"}</strong> of{" "}
+        <strong className="tabular-nums">{seatCap ?? "no limit"}</strong> accounts used. New
+        sign-ups stop at the limit; idle guests free their seat after 7 days. Raise it in SQL:{" "}
+        <code>update public.app_limits set max_users = 150;</code>
+      </Notice>
+
+      <p className="mt-4 text-sm">
         <Link href="/admin/trivia" className="underline">
           Culé Ten trivia: player repository &amp; lists →
         </Link>

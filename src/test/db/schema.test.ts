@@ -327,6 +327,28 @@ describe("sign-up: names and the Global league", () => {
   });
 });
 
+describe("seat limit", () => {
+  it("blocks new accounts once every seat is taken, and frees seats when users leave", async () => {
+    const used = (await db.query<{ n: number }>(`select count(*)::int as n from auth.users`))
+      .rows[0]!.n;
+    await db.query(`update public.app_limits set max_users = $1`, [used + 1]);
+    const add = (id: string) =>
+      db.query(`insert into auth.users (id, is_anonymous) values ($1, true)`, [id]);
+    await add("b0000000-0000-0000-0000-000000000001");
+    await expect(add("b0000000-0000-0000-0000-000000000002")).rejects.toThrow(/CULEXI_FULL/);
+    await db.query(`delete from auth.users where id = 'b0000000-0000-0000-0000-000000000001'`);
+    await add("b0000000-0000-0000-0000-000000000002");
+    await db.query(`delete from auth.users where id = 'b0000000-0000-0000-0000-000000000002'`);
+    await db.query(`update public.app_limits set max_users = 100`);
+  });
+
+  it("hides the limit table from users", async () => {
+    await expect(
+      asUser(db, CARLA, (tx) => tx.query(`select max_users from public.app_limits`)),
+    ).rejects.toThrow(/permission denied/);
+  });
+});
+
 describe("last seen (guest cleanup)", () => {
   it("refreshes your own last-seen time at most every 12 hours", async () => {
     await db.query(

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { isAdminEmail } from "@/lib/env/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSeatLimitError } from "@/lib/seat-limit";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +15,11 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   // OAuth providers send ?error=... when the user cancels or something fails.
-  if (url.searchParams.get("error"))
-    return NextResponse.redirect(new URL("/?error=oauth", url.origin));
+  if (url.searchParams.get("error")) {
+    // A new Google account blocked by the seat limit comes back as a "Database error".
+    const full = isSeatLimitError(url.searchParams.get("error_description") ?? "");
+    return NextResponse.redirect(new URL(`/?error=${full ? "full" : "oauth"}`, url.origin));
+  }
   if (!code) return NextResponse.redirect(new URL("/?error=missing-code", url.origin));
 
   const supabase = await createClient();

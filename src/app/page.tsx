@@ -8,6 +8,7 @@ import { Wordmark } from "@/components/wordmark";
 import { COMPETITION_LABELS } from "@/features/fantasy/labels";
 import { loadDashboard } from "@/features/home/dashboard";
 import { getSessionUser } from "@/lib/auth";
+import { FULL_MESSAGE } from "@/lib/seat-limit";
 import { getAuthMethods } from "@/lib/supabase/auth-methods";
 import { createClient } from "@/lib/supabase/server";
 
@@ -15,6 +16,7 @@ const ERRORS: Record<string, string> = {
   "missing-code": "That sign-in link was incomplete. Request a new one.",
   "link-expired": "That sign-in link has expired or was already used. Request a new one.",
   oauth: "Sign-in was cancelled or failed. Please try again.",
+  full: FULL_MESSAGE,
 };
 
 export default async function HomePage({

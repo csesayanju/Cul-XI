@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { serverEnv } from "@/lib/env/server";
+import { FULL_MESSAGE, isSeatLimitError as isFull } from "@/lib/seat-limit";
 import { createClient } from "@/lib/supabase/server";
 
 export interface FormState {
@@ -25,7 +26,10 @@ export async function signInWithMagicLink(
     email: parsed.data,
     options: { emailRedirectTo: `${serverEnv().APP_URL}/auth/callback` },
   });
-  if (error) return { ok: false, message: `Could not send the link: ${error.message}` };
+  if (error) {
+    if (isFull(error.message)) return { ok: false, message: FULL_MESSAGE };
+    return { ok: false, message: `Could not send the link: ${error.message}` };
+  }
 
   return { ok: true, message: "Check your inbox — we sent you a sign-in link." };
 }
@@ -50,7 +54,10 @@ export async function signInWithGoogle(): Promise<FormState> {
 export async function signInAsGuest(): Promise<FormState> {
   const supabase = await createClient();
   const { error } = await supabase.auth.signInAnonymously();
-  if (error) return { ok: false, message: `Guest sign-in is unavailable: ${error.message}` };
+  if (error) {
+    if (isFull(error.message)) return { ok: false, message: FULL_MESSAGE };
+    return { ok: false, message: `Guest sign-in is unavailable: ${error.message}` };
+  }
   redirect("/matches?welcome=1");
 }
 
